@@ -1,5 +1,6 @@
 (ns rt-agi.resources
-  (:require [clojure.java.io :as io]))
+  (:require [clojure.java.io :as io]
+            [rt-agi.lru :as lru]))
 
 ;; track the games we've heard about
 (def games (atom {}))
@@ -11,8 +12,7 @@ refer to the game for the rest of the resource-loading functions."
   ;; TODO: check if the directory exists, and looks like an AGI game.
   (swap! games assoc game (io/file root-dir)))
    
-;; track the last few sound maps
-;; seen
+;; cache all loaded sound maps
 (def sound-maps "A cache of loaded sound maps." (atom {}))
 
 (defn read-sound-map [game]
@@ -41,3 +41,52 @@ refer to the game for the rest of the resource-loading functions."
         smap)))
 
 
+(defn count-resources [game type]
+  "Give the number of resources for the given TYPE (:pic :view :sound)"
+  (case type
+    :sound (count (sound-map game))
+    0))
+
+(def sound-lru-cache
+  "A LRU cche of the last few sounds loaded."
+  (atom (lru/make-lru 5)))
+
+(defn parse-sound [buff]
+  "Parse an AGI sound resource. TODO: actually parse it."
+  buff)
+
+(defn read-sound [game num]
+  "Read the sound resource number NUM from GAME"
+  (let [smap (sound-map game)]
+    (if (>= num (count smap))
+      nil
+      (let [{:keys [location volume]} (smap num)
+            fname (format "VOL.%d" volume)]
+        (if volume
+          (with-open [volfile (java.io.RandomAccessFile.
+                               (io/file (@games game) fname)
+                               "r")]
+            (.seek volfile location)
+            (let [header (byte-array 5)]
+              (.readFully volfile header)
+              (when-not (and (= (aget header 0) 0x12)
+                             (= (aget header 1) 0x34)
+                             (= (aget header 2) volume))
+                (throw (Exception. "Bad VOL data!")))
+              (let [res-len (bit-or (bit-shift-left (bit-and (aget header 4) 0xff) 8)
+                                    (bit-and (aget header 3) 0xff))
+                    buff (byte-array res-len)]
+                (.readFully volfile buff)
+                (parse-sound buff))))
+          nil)))))
+
+(defn load-resource [game type num]
+  "Load the resource number NUM from GAME of the given TYPE."
+  (case type
+    :sound
+    (let [key {:game game :num num}]
+      (or (lru/lookup @sound-lru-cache key)
+          (let [snd (read-sound game num)]
+            (swap! sound-lru-cache lru/conj! key snd)
+            snd)))
+    nil))
