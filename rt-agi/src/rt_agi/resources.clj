@@ -2,15 +2,63 @@
   (:require [clojure.java.io :as io]
             [rt-agi.lru :as lru]))
 
-;; track the games we've heard about
+;; track the game specs we've heard about
 (def games (atom {}))
+
+(defn game-spec [game]
+  "If GAME is a keyword, look it up in our game list. Return maps as-is, assuming
+it must be a game-spec."
+  (if (keyword? game)
+    (game @games)
+    game))
+
+(defn game-file [game fname]
+  "Compose a full path to a game file FNAME for GAME"
+  (io/file (-> game game-spec :dir) fname))
+
+(defn determine-game-version [root-dir]
+  (with-open [agivol (io/input-stream (io/file root-dir "AGIDATA.OVL"))]
+    (loop [so-far []]
+      (let [ch (.read agivol)]
+        (cond
+          ;; we ran out of characters!
+          (= -1 ch) (throw (Exception. "Can't determine game version!"))
+
+          ;; dots are allowed in certain positions
+          (= ch (int \.))
+          (case (count so-far)
+            (1 5) (recur (conj so-far ch))
+            (recur []))
+
+          ;; digits are allowed in certain positions
+          (and (>= ch (int \0)) (<= ch (int \9)))
+          (case (count so-far)
+            (0 2 3 4 6 7 8) (recur (conj so-far ch)) 
+            (recur []))
+
+          ;; anything else... see if we are done or not...
+          :else
+          (case (count so-far)
+            (5 9) (apply str (map char so-far))
+            (recur [])))))))
+
+(defn read-game-metadata [key root-dir]
+  "Determine the AGI version and load the resource lists. TODO: actually do that"
+  (let [root (io/file root-dir)
+        version (determine-game-version root)]
+    {
+     :name (str key),
+     :dir root,
+     :version version,
+     :volume-fmt "VOL.%d",
+     }))
 
 (defn add-game [game root-dir]
   "Register a GAME with a given ROOT-DIR. GAME will be used to
 refer to the game for the rest of the resource-loading functions."
   ;; TODO: check that game is a keyword, and root-dir is a java.io.File
   ;; TODO: check if the directory exists, and looks like an AGI game.
-  (swap! games assoc game (io/file root-dir)))
+  (swap! games assoc game (read-game-metadata game root-dir)))
    
 ;; cache all loaded sound maps
 (def sound-maps "A cache of loaded sound maps." (atom {}))
@@ -18,7 +66,7 @@ refer to the game for the rest of the resource-loading functions."
 (defn read-sound-map [game]
   "Read the sound map for GAME from disk."
   (let [buf (byte-array 3)]
-    (with-open [snddir (io/input-stream (io/file (@games game) "SNDDIR"))]
+    (with-open [snddir (io/input-stream (game-file game "SNDDIR"))]
       (loop [result []]
         (case (.readNBytes snddir buf 0 3)
           0 result
@@ -63,9 +111,8 @@ refer to the game for the rest of the resource-loading functions."
       (let [{:keys [location volume]} (smap num)
             fname (format "VOL.%d" volume)]
         (if volume
-          (with-open [volfile (java.io.RandomAccessFile.
-                               (io/file (@games game) fname)
-                               "r")]
+          (with-open [volfile
+                      (java.io.RandomAccessFile. (game-file game fname) "r")]
             (.seek volfile location)
             (let [header (byte-array 5)]
               (.readFully volfile header)
@@ -82,11 +129,12 @@ refer to the game for the rest of the resource-loading functions."
 
 (defn load-resource [game type num]
   "Load the resource number NUM from GAME of the given TYPE."
-  (case type
-    :sound
-    (let [key {:game game :num num}]
-      (or (lru/lookup @sound-lru-cache key)
-          (let [snd (read-sound game num)]
-            (swap! sound-lru-cache lru/conj! key snd)
-            snd)))
-    nil))
+  (let [game (game-spec game)]
+    (case type
+      :sound
+      (let [key {:game game :num num}]
+        (or (lru/lookup @sound-lru-cache key)
+            (let [snd (read-sound game num)]
+              (swap! sound-lru-cache lru/conj! key snd)
+              snd)))
+      nil)))
