@@ -1,18 +1,22 @@
 (ns rt-agi.lru)
 
 (defn make-lru [size]
-  "Create an lru cache of max-size size. We assume size is on the order of 10
-or so, so a simple linear search of the vals on lookup should be ok."
-  (if (> size 20)
-    (throw (Exception. "Max size of LRU cache is 20!"))
-    { :vals () :max-size size }))
+  "Create an lru cache of max-size size."
+  {
+   :vals {}                        ; map for fast lookup
+   :order (vec (repeat size nil))  ; keys to replace
+   :idx (cycle (range size))       ; index to replace next
+   })
 
-(defn conj! [lru key val]
+(defn conj [{:keys [idx vals order] :as lru} key val]
   "Add VAL to the lru cache, under key KEY."
-  (assoc lru
-         :vals (doall (take (:max-size lru)
-                            (cons { :key key :val val } (:vals lru))))))
+  (let [oldest (order (first idx))]
+    {
+     :vals (assoc (dissoc vals oldest) key val)
+     :order (assoc order (first idx) key)
+     :idx (rest idx)
+     }))
 
 (defn lookup [lru key]
   "Lookup KEY in LRU, returning the value if found."
-    (:val (first (filter #(= key (:key %1)) (:vals lru)))))
+  ((:vals lru) key))
