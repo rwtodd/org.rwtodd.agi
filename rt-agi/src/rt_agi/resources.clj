@@ -5,6 +5,10 @@
 ;; track the game specs we've heard about
 (def games (atom {}))
 
+(defn loaded-games []
+  "return all the games registered with `add-game`"
+  (keys @games))
+
 (defn game-spec [game]
   "If GAME is a keyword, look it up in our game list. Return maps as-is, assuming
 it must be a game-spec."
@@ -74,9 +78,23 @@ it must be a game-spec."
           [[:sound "SNDDIR"], [:pic "PICDIR"],
            [:view "VIEWDIR"], [:logic "LOGDIR"]]))
 
+(defn determine-v3-prefix [root]
+  "Figure out what the prefix string on the resource
+files is, in the v3 game at ROOT."
+  (let [fls (file-seq root)
+        volf (first (filter #(.endsWith (.getName %) "VOL.0") fls))
+        pfx (.substring volf 0 (- (.length volf) 5))]
+    (if (.exists (io/file root (str pfx "DIR")))
+      pfx
+      (throw (Exception. "Can't determine game prefix!")))))
+        
 (defn v3-maps [root]
   "Read the combined DIR file for v3 maps"
-  {})
+  (let [prefix (determine-v3-prefix root)]
+    {
+     :name prefix,
+     :volume-fmt (str prefix "VOL.%d"),
+     }))
 
 (defn read-game-metadata [key root-dir]
   "Determine the AGI version and load the resource lists. TODO: actually do that"
@@ -86,15 +104,16 @@ it must be a game-spec."
                            (.concat (.substring version 0 5)
                                     (.substring version 6))
                            version))]
-    (merge (if (< vernum 3) 
-             (v2-maps root)
-             (v3-maps root))
-           {
-            :name (str key),
-            :dir root,
-            :version version,
-            :vernum vernum,
-            })))
+    (merge 
+     {
+      :name (str key),
+      :dir root,
+      :version version,
+      :vernum vernum,
+      }
+     (if (< vernum 3) 
+       (v2-maps root)
+       (v3-maps root)))))
 
 (defn add-game [game root-dir]
   "Register a GAME with a given ROOT-DIR. GAME will be used to
@@ -135,6 +154,10 @@ refer to the game for the rest of the resource-loading functions."
 (defn resource-key [game type num]
   "Build a LRU-cache key for a resource"
   (str num type game))
+
+(defn resource-count [game type]
+  "Look up the number of resources of type TYPE there are in GAME"
+  (-> game game-spec type count))
 
 (defn load-resource [game type num]
   "Load the resource number NUM from GAME of the given TYPE."
