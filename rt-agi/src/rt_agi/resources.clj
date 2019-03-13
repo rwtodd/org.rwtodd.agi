@@ -66,18 +66,18 @@
                 (throw (Exception. "Unknown AGI resource type!")))
         buf (byte-array 3)]
     (with-open [dir (io/input-stream (game-file game dirf))]
-      (loop [num 0, result []]
+      (loop [num 0, result (transient [])]
         (case (.readNBytes dir buf 0 3)
-          0 result
+          0 (persistent! result)
           3 (recur (inc num)
-                   (conj result
-                         (let [vol (bit-shift-right (bit-and (aget buf 0) 0xff) 4)
-                               loc (bit-or (bit-shift-left (bit-and (aget buf 0) 0x0f) 16)
-                                           (bit-shift-left (bit-and (aget buf 1) 0xff) 8)
-                                           (bit-and (aget buf 2) 0xff))]
-                           (if (and (= vol 0x0f) (= loc 0xfffff))
-                             { :num num :present false }
-                             { :num num :volume vol :location loc }))))
+                   (conj! result
+                          (let [vol (bit-shift-right (bit-and (aget buf 0) 0xff) 4)
+                                loc (bit-or (bit-shift-left (bit-and (aget buf 0) 0x0f) 16)
+                                            (bit-shift-left (bit-and (aget buf 1) 0xff) 8)
+                                            (bit-and (aget buf 2) 0xff))]
+                            (if (and (= vol 0x0f) (= loc 0xfffff))
+                              { :num num :present false }
+                              { :num num :volume vol :location loc }))))
           (throw (Exception. "Bad format of DIR file!")))))))
     
 (defn determine-v3-prefix
