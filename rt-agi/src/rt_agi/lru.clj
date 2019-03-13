@@ -23,3 +23,4 @@
   "Lookup KEY in LRU, returning the value if found."
   [lru key]
   ((:vals lru) key))
+
