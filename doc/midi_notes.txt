@@ -1,0 +1,10 @@
+N O T E S
+
+... regarding converting AGI sounds to MIDI:
+                  Richard Todd 2019
+
+Since sound resources are timed to 1/60th of a second,
+it seems I should set the time to SMPTE_30, with a
+division of 2 ticks per 30th. That way, the durations
+are 1:1.
+
