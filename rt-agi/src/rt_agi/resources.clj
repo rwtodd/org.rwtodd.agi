@@ -1,6 +1,7 @@
 (ns rt-agi.resources
   (:require [clojure.java.io :as io]
-            [rt-agi.lru :as lru]))
+            [rt-agi.lru :as lru]
+            [rt-agi.sound :as snd]))
 
 ;; track the game specs we've heard about
 (def games "Tracks the games that have been registered." (atom {}))
@@ -30,8 +31,8 @@
     (io/file (:dir gs) (format (str (:prefix gs) "VOL.%d") num))))
 
 (defn determine-game-version
-  [game]
   "Open the AGIDATA.OVL file and dig out the version number string."
+  [game]
   (with-open [agivol (io/input-stream (game-file game "AGIDATA.OVL"))]
     (loop [so-far []]
       (let [ch (.read agivol)]
@@ -170,7 +171,7 @@ files is, in the v3 game at ROOT."
            { type (parse-v2-dir gspec type) }
            (parse-v3-dirs gspec)))))))
   
-(defn resource-count
+(defn count-resources
   "Look up the number of resources of type TYPE there are in GAME"
   [game type]
   (count (get-resource-dir game type)))
@@ -183,10 +184,13 @@ files is, in the v3 game at ROOT."
     (or (lru/lookup @resource-lru-cache key)
         (let [rdir (get-resource-dir gspec type)
               rspec (and (< num (count rdir)) (rdir num))
-              res   (and rspec (if (< (:vernum gspec) 3)
+              raw   (and rspec (if (< (:vernum gspec) 3)
                                  (load-v2-resource gspec rspec)
                                  ;; todo: handle v3
-                                 (load-v2-resource gspec rspec)))]
+                                 (load-v2-resource gspec rspec)))
+              res   (and raw (case type
+                               :sound (snd/parse-sound raw)
+                               raw))]
           (if res
             (do 
               (swap! resource-lru-cache lru/conj key res)
