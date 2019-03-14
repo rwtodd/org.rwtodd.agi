@@ -8,3 +8,14 @@ it seems I should set the time to SMPTE_30, with a
 division of 2 ticks per 30th. That way, the durations
 are 1:1.
 
+(import  (javax.sound.midi Sequence Track MidiEvent ShortMessage MidiSystem))
+(def tst (Sequence. Sequence/SMPTE_30 2))
+(def t1 (.createTrack tst))
+(.add t1 (MidiEvent. (ShortMessage. ShortMessage/NOTE_ON 0 60 100) 0))
+(.add t1 (MidiEvent. (ShortMessage. ShortMessage/NOTE_OFF 0 60 0) 60))
+(.add t1 (MidiEvent. (ShortMessage. ShortMessage/NOTE_ON 0 61 80) 60))
+(.add t1 (MidiEvent. (ShortMessage. ShortMessage/NOTE_OFF 0 61 0) 120))
+(MidiSystem/getMidiFileTypes tst)
+(MidiSystem/write tst 1 (java.io.File. "C:/Users/richa/Documents/test.mid"))
+
+Apparently, to pan a channel, we use CONTROL_CHANGE 10
