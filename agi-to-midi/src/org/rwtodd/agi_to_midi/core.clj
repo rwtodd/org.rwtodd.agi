@@ -11,12 +11,18 @@
   (some #(< (.attenuation %) 15) data))
 
 (defn scale-velocity
+  "AGI sound resources have an attenuation from 0 (highest-volume)
+  to 15 (silent).  This function adjusts the scale to the 0-127
+  MIDI scale."
   [atten]
   (Math/round (double (* (- 15 atten) (/ 127 15)))))
 
 (def freq-factor (Math/log10 (Math/pow 2.0 (double (/ 1 12)))))
 
 (defn scale-frequency
+  "AGI Sound resources store a frequency divisor specific to the
+  TI Sound chip in the PCjr.  This function converts it to the
+  nearest MIDI note number."
   [reset-num]
   (if (zero? reset-num)
     0
@@ -40,8 +46,14 @@
           (.add track (MidiEvent. (ShortMessage. ShortMessage/NOTE_OFF chan note 0) end-time)))
         (recur end-time (next data))))))
         
-(defn to-sequence
-  "Convert a Sound resource to a sequence"
+(defn to-midi
+  "Convert a Sound resource to a MIDI sequence. You can pass an
+  options map to this function: :instruments is a vector of general-midi
+  instrument numbers, and :panning is a vector of MIDI pan data (0-127 left-to-right).
+
+  You can either pass a loaded sound resource, or request it by :key and
+  resource number.  e.g.: (to-midi :kq3 20 {:instruments [ 7 8 9 ]})
+  "
   ([{:keys [channels]} {:keys [instruments panning]}]
    (let [sequence (Sequence. Sequence/SMPTE_30 2)
          insts (or instruments [0 0 0])
@@ -64,11 +76,12 @@
                           0))
              (convert-notes track chan (channels chan))))))
      sequence))
-  ([game num opts] (to-sequence (res/load-resource game :sound num) opts)))
+  ([game num opts] (to-midi (res/load-resource game :sound num) opts)))
 
-(defn play-sequence
-  [s]
-  (doto (MidiSystem/getSequencer) .open (.setSequence s) .start))
+(defn play-midi
+  "Helper function to send a sequence to the default sequencer."
+  [midi]
+  (doto (MidiSystem/getSequencer) .open (.setSequence midi) .start))
 
 (defn -main
   "I don't do a whole lot ... yet."
