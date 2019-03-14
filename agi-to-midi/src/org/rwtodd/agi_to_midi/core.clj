@@ -14,14 +14,16 @@
   [atten]
   (Math/round (double (* (- 15 atten) (/ 127 15)))))
 
+(def freq-factor (Math/log10 (Math/pow 2.0 (double (/ 1 12)))))
+
 (defn scale-frequency
   [reset-num]
   (if (zero? reset-num)
     0
     (min 127
-         (Math/round (+ (* 12 (/ (Math/log (/ (/ 111860.78125 reset-num) 440.0))
-                                 (Math/log 2)))
-                        69)))))
+         (Math/round (- (/ (Math/log10 (double (/ 111860 reset-num)))
+                           freq-factor)
+                        36)))))
     
 (defn convert-notes
   "Convert the notes of a channel to MIDI short messages."
