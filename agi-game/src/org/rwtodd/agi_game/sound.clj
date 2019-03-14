@@ -1,4 +1,4 @@
-(ns rt-agi.sound)
+(ns org.rwtodd.agi-game.sound)
 ;;   (:require []))
 
 (defn read-u16
@@ -89,5 +89,3 @@
                   (parse-tones t3)
                   (parse-noise nz)]]
     (assoc (sound-metadata channels) :channels channels)))
-
-

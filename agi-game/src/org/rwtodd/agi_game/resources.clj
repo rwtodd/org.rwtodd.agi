@@ -1,7 +1,7 @@
-(ns rt-agi.resources
+(ns org.rwtodd.agi-game.resources
   (:require [clojure.java.io :as io]
-            [rt-agi.lru :as lru]
-            [rt-agi.sound :as snd]))
+            [org.rwtodd.agi-game.lru :as lru]
+            [org.rwtodd.agi-game.sound :as snd]))
 
 ;; track the game specs we've heard about
 (def games "Tracks the games that have been registered." (atom {}))

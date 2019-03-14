@@ -1,4 +1,4 @@
-(ns rt-agi.lru)
+(ns org.rwtodd.agi-game.lru)
 
 (defn make-lru
   "Create an lru cache of max-size size."
