@@ -1,5 +1,6 @@
 (ns org.rwtodd.agi-to-midi.core
-  (:require [org.rwtodd.agi-game.resources :as res])
+  (:require [org.rwtodd.agi-game.resources :as res]
+            [clojure.java.io :as io])
   (:import (javax.sound.midi Sequence        Track
                              MidiEvent       ShortMessage
                              MidiSystem))
@@ -82,6 +83,11 @@
   "Helper function to send a sequence to the default sequencer."
   [midi]
   (doto (MidiSystem/getSequencer) .open (.setSequence midi) .start))
+
+(defn write-midi
+  "Helper function to write a midi sequence to a file."
+  [midi fname]
+  (MidiSystem/write midi 1 (io/as-file fname)))
 
 (defn -main
   "I don't do a whole lot ... yet."

@@ -19,3 +19,16 @@ are 1:1.
 (MidiSystem/write tst 1 (java.io.File. "C:/Users/richa/Documents/test.mid"))
 
 Apparently, to pan a channel, we use CONTROL_CHANGE 10
+
+
+NOTE:  Instruments I tend to like best for AGI songs:
+
+0 = piano
+7 = harpsichord
+11 = music box
+25 = nylon-string guitar
+46 = pizzicato/harp?
+82 - saw wave
+87 - 5th saw
+88 - bass and lead
+91 - polysynth
