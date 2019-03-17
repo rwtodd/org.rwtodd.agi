@@ -112,3 +112,28 @@
                     (map-indexed #(extract-loop %1 (drop %2 source)))
                     loop-loc)
        })))
+
+(defn render-loop
+  "A helper function to render a loop. It doubles the x-size relative
+  to the y-size to get a better EGA approximation. Ideally it would
+  account for square pixels too, but not yet."
+  ([vl]
+   (let [tgt (BufferedImage.
+              (* 4 (apply + (map :width vl)))
+              (* 2 (apply max (map :height vl)))
+              BufferedImage/TYPE_INT_ARGB)
+         g    (.createGraphics tgt)]
+     (loop [x 0, vl vl]
+       (when-not (empty? vl)
+         (let [cur (first vl)
+               scaled-w (* 4 (:width cur))]
+           (.drawImage g (:img cur) x 0 scaled-w (* 2 (:height cur)) nil)
+           (recur (+ x scaled-w) (next vl)))))
+     (.dispose g)
+     tgt))
+  ([view loop-number] (render-loop ((:loops view) loop-number))))
+
+(defn count-loops
+  "A helper function to tell how many loops are in view V"
+  [v] (count (:loops v)))
+

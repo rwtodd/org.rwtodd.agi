@@ -1,0 +1,8 @@
+(defn write-all-loops
+  "A helper function to write all loops to files"
+  [game max]
+  (dotimes [i max]
+    (let [v (view/parse-view (load-resource game :view i ))]
+      (dotimes [lp (view/count-loops v)]
+        (javax.imageio.ImageIO/write (view/render-loop v lp) "PNG" (io/file (format "C:\\users\\richa\\OneDrive\\Desktop\\AGI_Favorites\\view-%03d-%02d.PNG" i lp)))))))
+	
