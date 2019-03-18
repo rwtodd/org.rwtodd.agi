@@ -1,7 +1,9 @@
 (ns org.rwtodd.agi-game.resources
   (:require [clojure.java.io :as io]
             [org.rwtodd.agi-game.lru :as lru]
-            [org.rwtodd.agi-game.sound :as snd]))
+            [org.rwtodd.agi-game.sound :as snd]
+            [org.rwtodd.agi-game.view :as view]
+            [org.rwtodd.agi-game.objects :as objects]))
 
 ;; track the game specs we've heard about
 (def games "Tracks the games that have been registered." (atom {}))
@@ -180,7 +182,7 @@ files is, in the v3 game at ROOT."
   "Load the resource number NUM from GAME of the given TYPE."
   [game type num]
   (let [gspec (game-spec game)
-        key (resource-key game type num)]
+        key (resource-key (:key gspec) type num)]
     (or (lru/lookup @resource-lru-cache key)
         (let [rdir (get-resource-dir gspec type)
               rspec (and (< num (count rdir)) (rdir num))
@@ -190,6 +192,7 @@ files is, in the v3 game at ROOT."
                                  (load-v2-resource gspec rspec)))
               res   (and raw (case type
                                :sound (snd/parse-sound raw)
+                               :view  (view/parse-view raw)
                                raw))]
           (if res
             (do 
@@ -197,4 +200,37 @@ files is, in the v3 game at ROOT."
               res)
             nil)))))
 
+(defonce avis-durgan
+  (vec (.getBytes "Avis Durgan" java.nio.charset.StandardCharsets/US_ASCII)))
 
+(defn decode-bytes!
+  "xor SRC byte array against repeating cycles of KEY"
+  [src key]
+  (let [len (alength src)]
+    (loop [idx 0, keycyc (cycle key)]
+      (if (< idx len)
+        (do
+          (aset-byte src idx (bit-xor (aget src idx) (first keycyc)))
+          (recur (inc idx) (next keycyc)))
+        src))))
+
+(defn load-objects
+  "Load the objects file for a game."
+  [game]
+  (let [gspec (game-spec game)
+        key (str "object" (:key gspec))]
+    (or (lru/lookup @resource-lru-cache key)
+        (let [obj-decoder (if (>= (:vernum gspec) 2.411)
+                            #(decode-bytes! % avis-durgan)
+                            identity)
+              ofile  (game-file gspec "OBJECT")
+              obytes (obj-decoder
+                      (with-open [ostream (io/input-stream ofile)]
+                        (.readAllBytes ostream)))
+              objects (objects/parse-objects obytes)]
+          (if objects
+            (do
+              (swap! resource-lru-cache lru/conj key objects)
+              objects)
+            nil)))))
+ 
