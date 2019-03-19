@@ -14,11 +14,14 @@
         sb     (StringBuilder. prefix)]
     (loop [src (drop 1 src)]
       (let [b (first src)]
-        (.append sb (byte-to-letter b))
-        (if (last-byte? b)
-          [ (.toString sb) (next src) ]
-          (recur (next src)))))))
-       
+        (if (nil? b)
+          [ "" nil ]
+          (do
+            (.append sb (byte-to-letter b))
+            (if (last-byte? b)
+              [ (.toString sb) (next src) ]
+              (recur (next src)))))))))
+
 (defn parse-words
   "Parse an AGI Words.Tok file, which has been slurped into
   memory prior to reaching this function."
@@ -27,14 +30,23 @@
          last-word ""
          words-to-group (transient {})
          group-to-words (transient {})]
-    (if (empty? src)
-      { :words (persistent! words-to-group), :groups (persistent! group-to-words) }
-      (let [[cur-word new-src] (parse-word src last-word)
-            group (read-u16-be (nth new-src 0) (nth new-src 1))]
-        (println cur-word ": " group) ;; DEBUG
+    (let [[cur-word new-src] (parse-word src last-word)
+          group              (and new-src
+                                  (read-u16-be (nth new-src 0) (nth new-src 1)))]
+      (if (nil? new-src)
+        {
+         :words (persistent! words-to-group),
+         :groups (persistent! group-to-words)
+         }
         (recur (drop 2 new-src)
                cur-word
                (assoc! words-to-group cur-word group)
-               (assoc! group-to-words group (conj (get group-to-words group #{}) cur-word)))))))
+               (assoc! group-to-words
+                       group
+                       (conj (get group-to-words group #{}) cur-word)))))))
 
 
+(defn synonyms
+  "Helper function to look up the synonyms of a word."
+  [words word]
+  (-> words :groups (get (-> words :words (get word)))))
