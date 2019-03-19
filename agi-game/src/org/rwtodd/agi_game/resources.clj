@@ -4,6 +4,7 @@
             [org.rwtodd.agi-game.sound :as snd]
             [org.rwtodd.agi-game.view :as view]
             [org.rwtodd.agi-game.objects :as objects]
+            [org.rwtodd.agi-game.logic :as logic]
             [org.rwtodd.agi-game.words :as words]))
 
 ;; track the game specs we've heard about
@@ -173,6 +174,37 @@ files is, in the v3 game at ROOT."
          (if (< (:vernum gspec) 3)
            { type (parse-v2-dir gspec type) }
            (parse-v3-dirs gspec)))))))
+
+(defonce avis-durgan
+  (vec (.getBytes "Avis Durgan" java.nio.charset.StandardCharsets/US_ASCII)))
+
+(defn decode-bytes!
+  "xor SRC byte array against repeating cycles of KEY"
+  ([src key start-idx]
+   (let [len (alength src)]
+     (loop [idx start-idx, keycyc (cycle key)]
+       (if (< idx len)
+         (do
+           (aset-byte src idx (bit-xor (aget src idx) (first keycyc)))
+           (recur (inc idx) (next keycyc)))
+         src))))
+  ([src key] (decode-bytes! src key 0)))
+
+(defn read-u16
+  "given the low and high byte (as java signed bytes), compose
+  an unsigned 16-bit number."
+  [low high]
+  (bit-or (bit-and low 0xff)
+          (bit-shift-left (bit-and high 0xff) 8)))
+
+(defn decrypt-v2-logic!
+  "V2 logic files have encrypted text inside, but V3 do not.
+  So, in V2's case, decrypt it before parsing."
+  [raw]
+  (let [text-area      (+ 2 (read-u16 (aget raw 0) (aget raw 1)))
+        message-count  (bit-and (aget raw text-area) 0xff)
+        decrypt-start  (+ text-area 3 (* 2 message-count))]
+    (decode-bytes! raw avis-durgan decrypt-start)))
   
 (defn count-resources
   "Look up the number of resources of type TYPE there are in GAME"
@@ -193,6 +225,10 @@ files is, in the v3 game at ROOT."
                                  (load-v2-resource gspec rspec)))
               res   (and raw (case type
                                :sound (snd/parse-sound raw)
+                               :logic (logic/parse-logic
+                                       (if (< (:vernum gspec) 3)
+                                         (decrypt-v2-logic! raw)
+                                         raw))
                                :view  (view/parse-view raw)
                                raw))]
           (if res
@@ -200,20 +236,6 @@ files is, in the v3 game at ROOT."
               (swap! resource-lru-cache lru/conj key res)
               res)
             nil)))))
-
-(defonce avis-durgan
-  (vec (.getBytes "Avis Durgan" java.nio.charset.StandardCharsets/US_ASCII)))
-
-(defn decode-bytes!
-  "xor SRC byte array against repeating cycles of KEY"
-  [src key]
-  (let [len (alength src)]
-    (loop [idx 0, keycyc (cycle key)]
-      (if (< idx len)
-        (do
-          (aset-byte src idx (bit-xor (aget src idx) (first keycyc)))
-          (recur (inc idx) (next keycyc)))
-        src))))
 
 (defn load-objects
   "Load the objects file for a game."
