@@ -3,7 +3,8 @@
             [org.rwtodd.agi-game.lru :as lru]
             [org.rwtodd.agi-game.sound :as snd]
             [org.rwtodd.agi-game.view :as view]
-            [org.rwtodd.agi-game.objects :as objects]))
+            [org.rwtodd.agi-game.objects :as objects]
+            [org.rwtodd.agi-game.words :as words]))
 
 ;; track the game specs we've heard about
 (def games "Tracks the games that have been registered." (atom {}))
@@ -228,9 +229,22 @@ files is, in the v3 game at ROOT."
                       (with-open [ostream (io/input-stream ofile)]
                         (.readAllBytes ostream)))
               objects (objects/parse-objects obytes)]
-          (if objects
-            (do
-              (swap! resource-lru-cache lru/conj key objects)
-              objects)
-            nil)))))
+          (when objects
+            (swap! resource-lru-cache lru/conj key objects)
+            objects)))))
+
+(defn load-words
+  "Load the words.tok file for a game."
+  [game]
+  (let [gspec (game-spec game)
+        key (str "words" (:key gspec))]
+    (or (lru/lookup @resource-lru-cache key)
+        (let [wfile  (game-file gspec "WORDS.TOK")
+              wbytes (with-open [stream (io/input-stream wfile)]
+                       (.readAllBytes stream))
+              toks (words/parse-words wbytes)]
+          (when toks
+            (swap! resource-lru-cache lru/conj key toks)
+            toks)))))
+
  
