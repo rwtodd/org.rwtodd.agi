@@ -15,8 +15,12 @@ http://agi.sierrahelp.com/Tools/index.html:
   - AGI3INFO.TXT
   - extract_v3.c
 
+http://agi.sierrahelp.com/Documentation/Specifications/4-6-Logic.html:
+  - agicommands.pas
+  
 original notes;
   - midi_notes.txt
+  - view_notes.txt
   
 
 
