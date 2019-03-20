@@ -180,7 +180,7 @@ files is, in the v3 game at ROOT."
 
 (defn decode-bytes!
   "xor SRC byte array against repeating cycles of KEY"
-  ([src key start-idx]
+  ([^bytes src key start-idx]
    (let [len (alength src)]
      (loop [idx start-idx, keycyc (cycle key)]
        (if (< idx len)
@@ -200,7 +200,7 @@ files is, in the v3 game at ROOT."
 (defn decrypt-v2-logic!
   "V2 logic files have encrypted text inside, but V3 do not.
   So, in V2's case, decrypt it before parsing."
-  [raw]
+  [^bytes raw]
   (let [text-area      (+ 2 (read-u16 (aget raw 0) (aget raw 1)))
         message-count  (bit-and (aget raw text-area) 0xff)
         decrypt-start  (+ text-area 3 (* 2 message-count))]
