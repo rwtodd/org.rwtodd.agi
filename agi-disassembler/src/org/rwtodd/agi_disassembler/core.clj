@@ -324,8 +324,6 @@
        }
      (nthrest src (dec size)) ]))
     
-    
-  
 ;; reference for logic:
 ;; http://agiwiki.sierrahelp.com/index.php?title=AGI_Specifications:_Chapter_6_-_Logic_Resources#ss6.1
 (defn parse-logic-cmd
@@ -337,7 +335,7 @@
     [ nil nil ]
     (let [cmd (bit-and (first src) 0xff)]
       (case cmd
-        0xfe  (parse-goto (next src) game-info)
+        0xfe  (parse-goto-cmd (next src) game-info)
         0xff  (parse-if-cmd (next src) game-info) 
         (parse-lookup-logic cmd (next src) game-info)))))
 
@@ -346,7 +344,11 @@
   given the game key and a logic number."
   [game num]
   (let [info (collect-game-info game num)]
-    "hello"))
+    (loop [src (:bytecode info)]
+      (let [[da src2] (parse-logic-cmd src info)]
+        (when (not (nil? da))
+          (println da)
+          (recur src2))))))
 
 (defn -main
   "I don't do a whole lot ... yet."
