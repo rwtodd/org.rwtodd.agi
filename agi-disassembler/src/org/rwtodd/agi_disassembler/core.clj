@@ -1,5 +1,6 @@
 (ns org.rwtodd.agi-disassembler.core
-  (:require [org.rwtodd.agi-game.resources :as res])
+  (:require [clojure.string :as string]
+            [org.rwtodd.agi-game.resources :as res])
   (:gen-class))
 
 ;; argc = argument count
@@ -296,7 +297,7 @@
   "Parse an IF (condition-testing) block."
   [src game-info]
   ;; TODO: actually parse the block... for now, just skip to the FF + 2 bytes
-  (let [[skipped after] (split-with #(not (= % -1)))]
+  (let [[skipped after] (split-with #(not (= % -1)) src)]
     [ { :line "<IF BLOCK>"
        :size (+ (count skipped) 4)
        :if-jmp (read-s16 (nth after 1) (nth after 2))
@@ -314,15 +315,18 @@
 
 (defn parse-lookup-logic
   "Parse a logic command from the lookup table"
-  [src game-info]
-  (let [cmd (nth logic-commands (bit-and (first src) 0xff) unknown-command)
+  [byte src game-info]
+  (let [cmd (nth logic-commands byte unknown-command)
         argc (count-args cmd game-info)
+        args (map list (take argc src) (.argt cmd))
         size (+ argc 1)]
     [ {
-       :line (.name cmd)
+       :line (format "%s(%s)"
+                     (.name cmd)
+                     (string/join "," (map #(apply format-arg %) args)))
        :size size
        }
-     (nthrest src (dec size)) ]))
+     (nthrest src argc) ]))
     
 ;; reference for logic:
 ;; http://agiwiki.sierrahelp.com/index.php?title=AGI_Specifications:_Chapter_6_-_Logic_Resources#ss6.1
