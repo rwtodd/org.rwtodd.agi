@@ -262,7 +262,7 @@
   (case argt
     :msg (format "%s = %s"
                  (format-arg num argt)
-                 (nth (:messages game-info) num "<NOT FOUND!>"))
+                 (nth (:messages game-info) (dec num) "<NOT FOUND!>"))
     :inv (format "%s = %s"
                  (format-arg num argt)
                  (-> game-info
@@ -326,6 +326,10 @@
        :line (format "%s(%s)"
                      (.name cmd)
                      (string/join "," (map #(apply format-arg %) args)))
+       :extra-info (filter identity
+                           (map (fn [[n t]]
+                                  (arg-extra-info n t game-info))
+                                args))
        :size size
        }
      (nthrest src argc) ]))
