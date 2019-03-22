@@ -318,7 +318,9 @@
   [byte src game-info]
   (let [cmd (nth logic-commands byte unknown-command)
         argc (count-args cmd game-info)
-        args (map list (take argc src) (.argt cmd))
+        args (map (fn [a t] (list (bit-and a 0xff) t))
+                  (take argc src)
+                  (.argt cmd))
         size (+ argc 1)]
     [ {
        :line (format "%s(%s)"
