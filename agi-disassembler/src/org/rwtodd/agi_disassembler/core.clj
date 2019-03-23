@@ -235,6 +235,11 @@
    (->Command "unknown181" 0 nil)
    ])
 
+(defn unsigned-bytes
+  "map N bytes from SRC to unsigned values"
+  [n src]
+  (map #(bit-and % 0xff) (take n src)))
+
 (defn count-args
   "Determine the number of args for CMD, give game-info GI"
   [cmd gi]
@@ -248,7 +253,7 @@
    (case argt
      :num nil    :var \v      :flg \f     :msg \m
      :obj \o     :inv \i      :str \s     :wrd \w
-     :ctl \c     :unk \?      "<ERR>")
+     :ctl \c     :tok \t      :unk \?     "<ERR>")
    num))
 
 ;; TODO -- get more extra-arg info on vars and flags from
@@ -269,7 +274,18 @@
                      :inventory
                      (nth num {:name "<NOT FOUND!>"})
                      :name))
+    :tok (format "%s = %s"
+                 (format-arg num argt)
+                 (string/join "|" (-> game-info
+                                      :words
+                                      :groups
+                                      (get num))))
     nil))
+
+(defn synonyms
+  "Helper function to look up the synonyms of a word."
+  [words word]
+  (-> words :groups (get (-> words :words (get word)))))
 
 (defn collect-game-info
   "Gather the needed info for disassembly of
@@ -292,46 +308,117 @@
   [low high]
   (bit-or (bit-shift-left high 8) (bit-and low 0xff)))
 
+(defn parse-if-said
+  "Parse a SAID command"
+  [src game-info]
+  (let [argc (first src)
+        args (map #(bit-and % 0xff) (take argc (next src)))
+        size (+ argc 2)]
+    [ { :line (format "said(%s)"
+                      (string/join ","
+                                   (map #(format-arg % :tok) args)))
+       :extra-info (filter identity
+                           (map #(arg-extra-info % :tok game-info) args))
+       :size size
+       }
+     (nthrest src (inc argc))
+     ]))
+                  
+(defn parse-if-lookup
+  "lookup an if-test code"
+  [src game-info]
+  (let [cmd (nth test-commands (first src) unknown-command)
+        argc (count-args cmd game-info)
+        code (unsigned-bytes (inc argc) src)
+        args (map list (drop 1 code) (.argt cmd))
+        size (+ argc 1)]
+    {
+     :line (format "%s(%s)"
+                   (.name cmd)
+                   (string/join "," (map #(apply format-arg %) args)))
+     :extra-info (filter identity
+                         (map (fn [[n t]]
+                                (arg-extra-info n t game-info))
+                              args))
+     :code code
+     :size size
+     }))
+
+(defn parse-if-internals
+  "Parse an IF (0xFF) block of bytecode"
+  [src game-info]
+  (loop [src src  ; src bytes
+         cmd nil  ; command we are building 
+         tgt nil   ; termination condition
+         ]
+    (let [code (bit-and (first src) 0xff)]
+      (if (= code (peek tgt))
+        ;; todo ... pop tgt, update :size and recur or return...
+        cmd
+        (case code
+          0xFC (recur (next src)
+                      (cons { :line "IF-OR" :subcmd [] :code [0xfc 0xfc] } cmd)
+                      (cons 0xfc  tgt))
+          0xFF (recur (next src)
+                      (cons { :line "IF-AND" :subcmd [] :code [0xff 0xff] } cmd)
+                      (cons 0xff  tgt))
+          (let [cur-cmd
+                (case code
+                  14   (parse-if-said src game-info)
+                  0xFD (let [subc (parse-if-internals (next src) game-info)]
+                             (assoc subc
+                                    :line (format "NOT %s" (:line subc))
+                                    :size (inc (:size subc))
+                                    :code (cons 0xfd (:code subc))))
+                  (parse-if-lookup src game-info))]
+            (if (nil? cmd)
+              cur-cmd
+              (recur (drop (:size cur-cmd) src)
+                     (cons (update (first cmd) :subcmd conj cur-cmd)
+                           (rest cmd))
+                     tgt))))))))
+    
 (defn parse-if-cmd
   "Parse an IF (condition-testing) block."
   [src game-info]
   ;; TODO: actually parse the block... for now, just skip to the FF + 2 bytes
-  (let [[skipped after] (split-with #(not (= % -1)) src)]
-    [ { :line "<IF BLOCK>"
-       :size (+ (count skipped) 4)
-       :if-jmp (read-s16 (nth after 1) (nth after 2))
-       }
-   (nthrest after 3) ]))
+  (let [cmd (parse-if-internals src game-info)
+        csz (:size cmd)
+        after (drop csz src)]
+    (assoc cmd
+           :if-jmp (read-s16 (nth after 0) (nth after 1))
+           :size (+ csz 2))))
 
 (defn parse-goto-cmd
   "Parse the 0xfe (goto/else) command"
   [src game-info]
-  [ { :line "GOTO"
+  (let [jmp-target (read-s16 (nth src 1) (nth src 2))]
+    {
+     :line (format "GOTO(%d)" jmp-target)
      :size 3
-     :goto-jmp (read-s16 (nth src 0) (nth src 1))
-     }
-   (nthrest src 2) ])
+     :code (take src 3)
+     :goto-jmp jmp-target
+   }))
 
 (defn parse-lookup-logic
   "Parse a logic command from the lookup table"
-  [byte src game-info]
-  (let [cmd (nth logic-commands byte unknown-command)
+  [src game-info]
+  (let [cmd (nth logic-commands (first src) unknown-command)
         argc (count-args cmd game-info)
-        args (map (fn [a t] (list (bit-and a 0xff) t))
-                  (take argc src)
-                  (.argt cmd))
+        code (unsigned-bytes (inc argc) src)
+        args (map list (drop 1 code) (.argt cmd))
         size (+ argc 1)]
-    [ {
-       :line (format "%s(%s)"
-                     (.name cmd)
-                     (string/join "," (map #(apply format-arg %) args)))
-       :extra-info (filter identity
-                           (map (fn [[n t]]
-                                  (arg-extra-info n t game-info))
-                                args))
-       :size size
-       }
-     (nthrest src argc) ]))
+    {
+     :line (format "%s(%s)"
+                   (.name cmd)
+                   (string/join "," (map #(apply format-arg %) args)))
+     :extra-info (filter identity
+                         (map (fn [[n t]]
+                                (arg-extra-info n t game-info))
+                              args))
+     :code code
+     :size size
+     }))
     
 ;; reference for logic:
 ;; http://agiwiki.sierrahelp.com/index.php?title=AGI_Specifications:_Chapter_6_-_Logic_Resources#ss6.1
@@ -341,12 +428,12 @@
   SRC with which to continue."
   [src game-info]
   (if (empty? src)
-    [ nil nil ]
+    nil
     (let [cmd (bit-and (first src) 0xff)]
       (case cmd
-        0xfe  (parse-goto-cmd (next src) game-info)
-        0xff  (parse-if-cmd (next src) game-info) 
-        (parse-lookup-logic cmd (next src) game-info)))))
+        0xfe  (parse-goto-cmd src game-info)
+        0xff  (parse-if-cmd src game-info) 
+        (parse-lookup-logic src game-info)))))
 
 (defn disassemble
   "Disassemble a logic resource for a registered game,
@@ -354,10 +441,10 @@
   [game num]
   (let [info (collect-game-info game num)]
     (loop [src (:bytecode info)]
-      (let [[da src2] (parse-logic-cmd src info)]
-        (when (not (nil? da))
-          (println da)
-          (recur src2))))))
+      (let [cmd (parse-logic-cmd src info)]
+        (when (not (nil? cmd))
+          (println cmd)
+          (recur (drop (:size cmd) src)))))))
 
 (defn -main
   "I don't do a whole lot ... yet."
