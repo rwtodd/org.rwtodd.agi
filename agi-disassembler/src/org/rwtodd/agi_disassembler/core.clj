@@ -287,11 +287,10 @@
   [low high]
   (bit-or (bit-shift-left (bit-and high 0xff) 8) (bit-and low 0xff)))
 
-;; FIXME ... this is unsigned...
 (defn read-s16
   "Read a signed 16bit number from two 8-bit numbers"
   [low high]
-  (bit-or (bit-shift-left (bit-and high 0xff) 8) (bit-and low 0xff)))
+  (bit-or (bit-shift-left high 8) (bit-and low 0xff)))
 
 (defn parse-if-cmd
   "Parse an IF (condition-testing) block."
