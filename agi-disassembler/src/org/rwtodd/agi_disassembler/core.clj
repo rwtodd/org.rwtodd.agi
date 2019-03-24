@@ -506,17 +506,36 @@
                                      (assoc cur
                                             :then-clause (butlast processed-then)
                                             :else-clause processed-else)))))))))))
- 
+
+(defn pretty-print
+  [indent src]
+  (let [indentation (apply str (repeat indent \tab))]
+    (loop [src src]
+      (when (not (empty? src))
+        (let [{:keys [line size code subcmds then-clause else-clause extra-info]}
+              (first src)]
+          (println indentation line "\t;; " code "(size: " size ")")
+          (doall (map #(println indentation ";; " %) extra-info))
+          (when subcmds
+            (pretty-print (inc indent) subcmds))
+          (when then-clause
+            (println indentation "{")
+            (pretty-print (inc indent) then-clause)
+            (println indentation "}"))
+          (when else-clause
+            (println indentation "else {")
+            (pretty-print (inc indent) else-clause)
+            (println indentation "}"))
+          (recur (next src)))))))
+
 (defn disassemble
   "Disassemble a logic resource for a registered game,
   given the game key and a logic number."
   [game num]
   (let [info    (collect-game-info game num)
-        parsed  (parse-many (:bytecode info) parse-logic-cmd info)
-        post    (post-process-conditionals parsed)]
-    (doall (map println post))
-    nil))
-
+        parsed  (post-process-conditionals
+                 (parse-many (:bytecode info) parse-logic-cmd info))]
+    (pretty-print 0 parsed)))
 
 (defn -main
   "I don't do a whole lot ... yet."
