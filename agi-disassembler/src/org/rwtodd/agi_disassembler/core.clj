@@ -283,8 +283,63 @@
    num))
 
 
-;; TODO -- get more extra-arg info on vars and flags from
-;; http://agi.sierrahelp.com/Documentation/Specifications/2-2-Interpreter.html
+(defn var-info
+  "Give info about interpreter-set vars"
+  [num]
+  (case num
+    0 "Current room number"
+    1 "Previous room number"
+    2 "Border touched by EGO 0/none 1/top 2/right 3/bottom 4/left"
+    3 "Current Score"
+    4 "Number of object (other than EGO) touching the boarder"
+    5 "The code of border touched by the object in v4"
+    6 "Direction of EGO's motion 1/N 3/E 5/S 7/W 0/none"
+    7 "Maximum score"
+    8 "Free pages in memory"
+    9 "if non-zero, number of the word which wasn't found"
+    10 "Time delay in interpreter cycles in 1/20s"
+    11 "Clock seconds"
+    12 "Clock minutes"
+    13 "Clock hours"
+    14 "Clock days"
+    15 "Joystick sensitivity"
+    16 "ID of the view associated with EGO"
+    17 "Interpreter error code"
+    18 "Additional error info"
+    19 "Key pressed on keyboard"
+    20 "Computer type. IBM=0"
+    21 "If f15=0 and v21 != 0, close window in 0.5*v21 secs"
+    22 "Sound generator type 1/PC 3/Tandy"
+    23 "Sound volume"
+    24 "29h"
+    25 "ID number of item selected using status cmd"
+    26 "Graphics 0/CGA 2/Hercules 3/EGA"
+    nil))
+
+(defn flg-info
+  "Give info about interpreter-set flags"
+  [num]
+  (case num
+    0 "EGO base line is on pri-3 pixels (water surface)"
+    1 "EGO is invisible (completely obscured)"
+    2 "The player has issued a command line"
+    3 "EGO base line has touched a pri-2 pixel (signal)"
+    4 "'said' command has accepted user input"
+    5 "The new room is executed for the first time"
+    6 "'restart_game' command has been executed"
+    7 "when 1, writing to script-buffer is blocked"
+    8 "when 1, v15 determines joystick sensitivity"
+    9 "sound on/off"
+    10 "when 1, built-in debugger is on"
+    11 "set when logic-0 is run for the first time"
+    12 "'restore_game' command has been executed"
+    13 "when 1, allows the 'status' command to select items"
+    14 "when 1, allows the menu to work"
+    15 "'print'/'print_at' mode: 0/close-on-<enter> 1/message-stays-up"
+    nil))
+
+;; Extra flag/var information is from: 
+;;   http://agi.sierrahelp.com/Documentation/Specifications/2-2-Interpreter.html
 ;; TODO -- also, parse messages for %mxx (local messages) %gxx (logic.0 messages)
 ;; etc.
 (defn arg-extra-info
@@ -307,6 +362,16 @@
                                       :words
                                       :groups
                                       (get num))))
+    :flg (let [finfo (flg-info num)]
+           (when finfo
+             (format "%s: %s"
+                     (format-arg num argt)
+                     finfo)))
+    :var (let [vinfo (var-info num)]
+           (when vinfo
+             (format "%s: %s"
+                     (format-arg num argt)
+                     vinfo)))
     nil))
 
 (defn synonyms
