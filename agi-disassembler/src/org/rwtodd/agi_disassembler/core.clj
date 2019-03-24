@@ -473,13 +473,48 @@
         parse-lookup-logic)
        src game-info))))
 
+(defn split-code
+  "splits N-bytes-worth of commands from the parsed bytecode"
+  [n parsed]
+  (split-at (count (take-while #(<= % n) (reductions + (map :size parsed))))
+            parsed))
+         
+(defn post-process-conditionals
+  "arrange IF/THEN/ELSE commands from parsed bytecode"
+  [parsed]
+  (loop [src    parsed
+         result (transient [])]
+    (if (empty? src)
+      (persistent! result)
+      (let [cur (first src)
+            jmp (:if-jmp cur)]
+        (if (nil? jmp)
+          ;; no :if-jmp, just collect the code and move on
+          (recur (next src) (conj! result cur))
+          ;; with an if-jmp, try to recover if/then/else structure
+          (let [[then-part after] (split-code jmp (next src))
+                processed-then    (post-process-conditionals then-part)
+                final-goto        (:goto-jmp (last processed-then))]
+            (if (nil? final-goto)
+              ;; no else, it seems
+              (recur after (conj! result
+                                  (assoc cur :then-clause processed-then)))
+              ;; ok, slurp up the else clause
+              (let [[else-part beyond] (split-code final-goto after)
+                    processed-else (post-process-conditionals else-part)]
+                (recur beyond (conj! result
+                                     (assoc cur
+                                            :then-clause (butlast processed-then)
+                                            :else-clause processed-else)))))))))))
+ 
 (defn disassemble
   "Disassemble a logic resource for a registered game,
   given the game key and a logic number."
   [game num]
-  (let [info (collect-game-info game num)
-        parsed  (parse-many (:bytecode info) parse-logic-cmd info)]
-    (doall (map println parsed))
+  (let [info    (collect-game-info game num)
+        parsed  (parse-many (:bytecode info) parse-logic-cmd info)
+        post    (post-process-conditionals parsed)]
+    (doall (map println post))
     nil))
 
 
