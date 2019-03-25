@@ -15,7 +15,7 @@
   "Parse a logic resource"
   [src]
   (let [logic-len     (read-u16 (nth src 0) (nth src 1))
-        num-messages  (nth src (+ logic-len 2))
+        num-messages  (bit-and (nth src (+ logic-len 2)) 0xff)
         message-base  (+ logic-len 3)
         messages      (into []
                             (comp
