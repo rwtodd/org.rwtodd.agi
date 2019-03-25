@@ -18,7 +18,7 @@
 (defn adjacent-difference
   "Compute all adjacent differences of COLL"
   [coll]
-  (map (fn [[b a]] (- a b)) (partition 2 1 coll)))
+  (map - (drop 1 coll) coll))
 
 (defn uneven-partition
   "Partition COLL into groups of sizes given in NS, followed by any remaining

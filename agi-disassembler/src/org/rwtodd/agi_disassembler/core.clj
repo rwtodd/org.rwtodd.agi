@@ -580,7 +580,7 @@
         (let [{:keys [line size code subcmds then-clause else-clause extra-info]}
               (first src)]
           (println indentation line "\t;; " code "(size: " size ")")
-          (doall (map #(println indentation ";; " %) extra-info))
+          (dorun (map #(println indentation ";; " %) extra-info))
           (when subcmds
             (pretty-print (inc indent) subcmds))
           (when then-clause
