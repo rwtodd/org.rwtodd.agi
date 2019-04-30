@@ -130,21 +130,28 @@
      (write-reverb (* rep-fade 60) reverb 1.0 0.001))))
   ([game num opts] (to-csound (res/load-resource game :sound num) opts)))
 
-;; possible options:
-;;   :repeat [s1 s2] -- repeat s1+s2 seconds of the piece, fading out s2
-;;   :panning [w x y z] -- pan the channels from left (0) to right (1)
-;;   :damping [w x y z] -- dampen the channels by some number of dB
-;;   :reverb secs     -- reverb decay time in secs 
 (defn to-csound-file
+  "Convert an agi sound resource to a csound SCO file.
+ Possible options:
+   :repeat [s1 s2] -- repeat s1+s2 seconds of the piece, fading out s2
+   :panning [w x y z] -- pan the channels from left (0) to right (1)
+   :damping [w x y z] -- dampen the channels by some number of dB
+   :reverb secs     -- reverb decay time in secs"
   ([sound fname opts]
-   (with-open [wtr (io/writer fname)]
-     (binding [*out* wtr]
-       (to-csound sound opts))))
+   (when sound
+     (with-open [wtr (io/writer fname)]
+       (binding [*out* wtr]
+         (to-csound sound opts)))))
   ([game num fname opts]
    (to-csound-file (res/load-resource game :sound num)
-                   (or fname (format "examples\\%s-s%d.sco" (name game) num))
+                   (or fname (format "examples\\%s-s%02d.sco" (name game) num))
                    opts)))
 
+(defn run-all-sounds
+  "run all sounds for a given game. OPTS are as in to-csound-file"
+  [game opts]
+  (dorun (map (fn [num] (to-csound-file game num nil opts))
+              (range (res/count-resources game :sound)))))
 (defn -main
   "I don't do a whole lot ... yet."
   [& args]
