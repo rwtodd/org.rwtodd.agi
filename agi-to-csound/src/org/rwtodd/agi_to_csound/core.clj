@@ -5,8 +5,8 @@
 
 (defn csound-duration [dur] (/ dur 10.0))
 
-;; we need 16 levels here, ending in 0..
-(def csound-db (conj (into [] (map double (range 90 60 -2))) 0.0))
+;; we need 16 levels here, ending in -200
+(def csound-db (conj (into [] (map double (range -20 -63 -3))) -200.0))
 
 (defn csound-freq [agi-freq]
   (if (> agi-freq 0.0)
@@ -19,8 +19,8 @@
   (some #(< (.attenuation %) 15) data))
 
 (defn write-voice-chan
-  "Writes a channel's worth of voice data."
-  [chan pan]
+  "Writes a channel's worth of voice data, using pan and damping info"
+  [chan pan damping]
   (when (is-audible? chan)
     (println "; next voice")
     (dorun (map
@@ -28,7 +28,7 @@
               (println (format "i 1\t%s\t%f\t%f\t%f\t%f"
                                time
                                (csound-duration (:duration tone))
-                               (csound-db (:attenuation tone))
+                               (- (csound-db (:attenuation tone)) damping)
                                (csound-freq (:freq tone))
                                pan)))
             (cons "0" (repeat "+")) ; times
@@ -41,14 +41,20 @@
 
   Prints the result to *out*, which can obviously be redirected
   with `bind`."
-  ([{:keys [duration channels]} {:keys [panning]}]
+  ([{:keys [duration channels]} {:keys [panning damping reverb]
+                                 :or {panning [0.5 0.7 0.3]
+                                      damping [0 0 0]
+                                      reverb 0.9}}]
+   (println ";; options: panning" panning "damping" damping "reverb" reverb)
    (println "t 0 360 ; 1/6th second")
    (dorun (map write-voice-chan
                (take 3 channels)
-               (or panning [0.5 0.3 0.7])))
+               panning
+               damping))
    (println "; reverb --")
-   (println (format "i 99\t0\t%f"
-                    (csound-duration duration))))
+   (println (format "i 99\t0\t%f\t%f"
+                    (csound-duration duration)
+                    reverb)))
   ([game num opts] (to-csound (res/load-resource game :sound num) opts)))
 
 (defn to-csound-file
@@ -57,7 +63,9 @@
      (binding [*out* wtr]
        (to-csound sound opts))))
   ([game num fname opts]
-   (to-csound-file (res/load-resource game :sound num) fname opts)))
+   (to-csound-file (res/load-resource game :sound num)
+                   (or fname (format "examples\\%s-s%d.sco" (name game) num))
+                   opts)))
 
 (defn -main
   "I don't do a whole lot ... yet."
