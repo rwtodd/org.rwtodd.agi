@@ -9,8 +9,8 @@ nchnls = 2
 gienv	ftgen	0, 0, 4096, 7, 0.95, 8,  1, 9,  0.95, 9,  0.9, 8,   0.85, 43,  0.8, 51,  0.75, 85,  0.7, 444,  0.2, 409, 0.15, 1195,  0
 gisqw	ftgen	0, 0, 2, 7, 1, 1, 1, 0, -1, 1, -1
 
-ga1		init	0.0
-gkvol		init	1.0
+gaLeft		init	0.0
+gaRight init 0.0
 
 instr	1    ;; square waves
 ; i1	p2	p3	p4	p5	p7
@@ -20,29 +20,38 @@ iampl	=	ampdbfs(p4-$DAMPEN)
 kenv	oscili	1, 0.125, gienv
 asq	oscil	iampl, p5, gisqw
 aenv	=	asq*kenv
-ga1	+=	aenv
-aoL, aoR pan2 aenv, p6, 0
-	outs	aoL, aoR
+aoL, aoR pan2	aenv, p6, 0
+gaLeft	+=	aoL
+gaRight +=	aoR
 endin
 
 instr 2 ;; "white" noise
 ; i2	p2	p3	p4	p5
 ;	start	dur	amp	hz
 iampl	=	ampdbfs(p4)
-aout	dust	iampl, p5 
-	outs	aout, aout
+aout	dust	iampl, p5
+gaLeft	+=	aout
+gaRight	+=	aout
 endin
 
 instr 3 ;; linear noise
 iampl	=	ampdbfs(p4)
 aout	mpulse	iampl, 1/p5
-	outs	aout, aout
+gaLeft	+=	aout
+gaRight	+=	aout
 endin
 
 
-instr	99 ;; reverb
-;; i99 p2=start p3=end p4=reverb time
-aout	reverb	ga1, p4
-	outs	aout*0.1, aout*0.1
-ga1	=	0
+instr	99 ;; out-mixer
+;; i99 p2=start p3=dur p4=reverb time p5=volstart p6=volend
+aoL	reverb	gaLeft, p4
+aoR	reverb	gaRight, p4
+if p5 != p6 then
+	kslope	expon	p5, p3, p6
+else
+	kslope	=	p5
+endif
+	outs	(gaLeft+(aoL*0.15))*kslope, (gaRight+(aoR*0.15))*kslope
+gaLeft	=	0
+gaRight	=	0
 endin
