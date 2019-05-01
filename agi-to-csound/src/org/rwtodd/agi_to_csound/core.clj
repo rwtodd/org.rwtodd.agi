@@ -94,8 +94,9 @@
   "Write the reverb statement into the score.
     dur=duration revt=reverb time
     fade-start=level at start fade-end=level at end"
-  [dur revt fade-start fade-end]
-  (println (format "i 99\t0\t%f\t%f\t%f\t%f"
+  [dur revt fade-start fade-end & {:keys [start-time] :or {start-time "0"}}]
+  (println (format "i 99\t%s\t%f\t%f\t%f\t%f"
+                   start-time
                    (csound-duration dur)
                    revt
                    fade-start
@@ -116,7 +117,10 @@
                                  :as opts}]
    (println ";; options:" opts)
    (write-channels channels panning damping)
-   (write-reverb duration reverb 1.0 1.0)
+   (write-reverb (if repeat duration (+ duration 120.0))
+                 reverb
+                 1.0
+                 1.0)
    (when repeat
      (let [[rep-full rep-fade] repeat
            rep-total           (+ rep-full rep-fade)]
@@ -127,7 +131,7 @@
                      panning
                      damping)
      (write-reverb (* rep-full 60) reverb 1.0 1.0)
-     (write-reverb (* rep-fade 60) reverb 1.0 0.001))))
+     (write-reverb (* rep-fade 60) reverb 1.0 0.001 :start-time "+"))))
   ([game num opts] (to-csound (res/load-resource game :sound num) opts)))
 
 (defn to-csound-file
