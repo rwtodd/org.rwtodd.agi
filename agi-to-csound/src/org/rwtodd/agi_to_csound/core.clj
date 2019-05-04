@@ -68,15 +68,13 @@
     (println "; noise channel")
     (dorun (map
             (fn [time noise]
-              (let [white? (= (:noise noise) :white)
-                    base-freq (csound-freq (:freq noise))]
+              (let [white? (= (:noise noise) :white)]
                 (println (format "i %d\t%s\t%f\t%f\t%f"
                                  (if white? 2 3)
                                  time
                                  (csound-duration (:duration noise))
-                                 (- (+ (csound-db (:attenuation noise)) 15)
-                                    damping)
-                                 (/ base-freq (if white? 4.0 2.0))))))
+                                 (- (csound-db (:attenuation noise)) damping)
+                                 (csound-freq (:freq noise))))))
             (cons "0" (repeat "+"))
             chan))))
                     
