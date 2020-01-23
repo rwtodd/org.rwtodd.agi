@@ -1,0 +1,34 @@
+N O T E S
+
+... regarding converting AGI sounds to MIDI:
+                  Richard Todd 2019
+
+Since sound resources are timed to 1/60th of a second,
+it seems I should set the time to SMPTE_30, with a
+division of 2 ticks per 30th. That way, the durations
+are 1:1.
+
+(import  (javax.sound.midi Sequence Track MidiEvent ShortMessage MidiSystem))
+(def tst (Sequence. Sequence/SMPTE_30 2))
+(def t1 (.createTrack tst))
+(.add t1 (MidiEvent. (ShortMessage. ShortMessage/NOTE_ON 0 60 100) 0))
+(.add t1 (MidiEvent. (ShortMessage. ShortMessage/NOTE_OFF 0 60 0) 60))
+(.add t1 (MidiEvent. (ShortMessage. ShortMessage/NOTE_ON 0 61 80) 60))
+(.add t1 (MidiEvent. (ShortMessage. ShortMessage/NOTE_OFF 0 61 0) 120))
+(MidiSystem/getMidiFileTypes tst)
+(MidiSystem/write tst 1 (java.io.File. "C:/Users/richa/Documents/test.mid"))
+
+Apparently, to pan a channel, we use CONTROL_CHANGE 10
+
+
+NOTE:  Instruments I tend to like best for AGI songs:
+
+0 = piano
+7 = harpsichord
+11 = music box
+25 = nylon-string guitar
+46 = pizzicato/harp?
+82 - saw wave
+87 - 5th saw
+88 - bass and lead
+91 - polysynth
