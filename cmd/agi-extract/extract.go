@@ -3,56 +3,20 @@ package main
 import (
 	"fmt"
 	"os"
-	"sort"
 	"strings"
 
 	"github.com/rwtodd/agi-tools/agi"
 	flag "github.com/rwtodd/cmdflag"
 )
 
-// format the WORDS.TOK data as CSV, sorted by word
-func formatWordsCSV(w map[string]uint16) {
-	fmt.Println(`"Word","Category"`)
-	var keys = make([]string, 0, len(w))
-	for k := range w {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	for _, k := range keys {
-		fmt.Printf("\"%s\",\"%d\"\n", k, w[k])
-	}
-}
-
-// format the WORDS.TOK data as a text table, ordered by the
-// category number.
-func formatWordsTable(w map[string]uint16) {
-	var invMap = make(map[uint16][]string)
-	for k, v := range w {
-		invMap[v] = append(invMap[v], k)
-	}
-	var keys = make([]int, 0, len(invMap))
-	for k := range invMap {
-		keys = append(keys, int(k))
-	}
-	sort.Ints(keys)
-	for _, k := range keys {
-		fmt.Printf("%04d:", k)
-		for idx, w := range invMap[uint16(k)] {
-			if idx%4 == 0 && idx > 0 {
-				fmt.Print("\n     ")
-			}
-			fmt.Printf("  <%s>", w)
-		}
-		fmt.Println()
-	}
-}
-
 func main() {
 	ver := flag.Bool("ver", false, "Print AGI Version Number")
 	words := flag.String("words", "NONE", "Print Words.TOK contents (arg can be CSV|TABLE)")
+	logic := flag.String("logic", "NONE", "Print Logic Scripts (arg is script numbers, or ALL)")
 
 	flag.Parse()
 	*words = strings.ToUpper(*words)
+	*logic = strings.ToUpper(*logic)
 
 	// set the root directory of the game
 	rootDir := "."
@@ -62,8 +26,11 @@ func main() {
 
 	// determine the index loading options based on the flags provided
 	var options agi.GameLoadOption
-	if *words != "NONE" {
+	if *words != "NONE" || *logic != "NONE" {
 		options |= agi.Load_WordsTok
+	}
+	if *logic != "NONE" {
+		options |= agi.Load_LogicDir
 	}
 
 	game, err := agi.NewGame(rootDir, options)
@@ -81,5 +48,25 @@ func main() {
 		formatWordsCSV(game.Words)
 	case "TABLE":
 		formatWordsTable(game.Words)
+	}
+
+	switch *logic {
+	case "ALL":
+		fmt.Printf("There are %d logic entries.\n", len(game.LogicDir))
+		for i, entry := range game.LogicDir {
+			if entry.IsPresent() {
+				logic, err := game.LoadLogic(i)
+				if err != nil {
+					fmt.Printf("Logic %d ERROR: %v\n", i, err)
+				} else {
+					for mnum, msg := range logic.Messages {
+						fmt.Printf("Logic %d Msg %d: <%s>\n", i, mnum, msg)
+					}
+				}
+			} else {
+				fmt.Printf("Logic %d is not present.\n", i)
+			}
+			fmt.Println("---------------------------------------------------------------")
+		}
 	}
 }
