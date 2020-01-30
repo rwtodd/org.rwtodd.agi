@@ -139,6 +139,14 @@ func NewGame(rootDir string, options GameLoadOption) (*Game, error) {
 		return nil, err
 	}
 
+    // if we need to load OBJECT, do so
+	if options&Load_Objects > 0 {
+		game.Objects, err = loadObjects(game)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// if we need to load resource indices, do so based on the
 	// AGI version
 	if game.Version.IsV2() {
@@ -166,15 +174,9 @@ func NewGame(rootDir string, options GameLoadOption) (*Game, error) {
 				return nil, err
 			}
 		}
-		if options&Load_Objects > 0 {
-			game.Objects, err = loadObjects_V2(rootDir)
-			if err != nil {
-				return nil, err
-			}
-		}
 	} else {
 		// TODO ... load V3 indices...
-		if options&(Load_LogicDir|Load_Objects|Load_PicDir|Load_SndDir|Load_ViewDir) > 0 {
+		if options&(Load_LogicDir|Load_PicDir|Load_SndDir|Load_ViewDir) > 0 {
 			return nil, errors.New("Cannot load V3 resources!")
 		}
 	}
@@ -204,15 +206,20 @@ func loadResDir_V2(rootDir string, fname string) ([]DirEntry, error) {
 	return entries, nil
 }
 
-func loadObjects_V2(rootDir string) (ObjectList, error) {
-	path := filepath.Join(rootDir, "OBJECT")
+// Loads the OBJECT file, decoding it if necessary.
+func loadObjects(game *Game) (ObjectList, error) {
+	path := filepath.Join(game.RootDir, "OBJECT")
 	objectBytes, err := ioutil.ReadFile(path)
 	if err != nil {
 		return ObjectList{}, err
 	}
-	return parseObjects(decode(Avis_Durgan, objectBytes))
+	if game.Version.Numeric >= 2.411 {
+		decode(Avis_Durgan, objectBytes)
+	}
+	return parseObjects(objectBytes)
 }
 
+// Loads the WORDS.TOK file for both v2 and v3 games.
 func loadWordsTok(rootDir string) (map[string]uint16, error) {
 	path := filepath.Join(rootDir, "WORDS.TOK")
 	wordsBytes, err := ioutil.ReadFile(path)
