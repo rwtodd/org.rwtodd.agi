@@ -13,10 +13,12 @@ func main() {
 	ver := flag.Bool("ver", false, "Print AGI Version Number")
 	words := flag.String("words", "NONE", "Print Words.TOK contents (arg can be CSV|TABLE)")
 	logic := flag.String("logic", "NONE", "Print Logic Scripts (arg is script numbers, or ALL)")
+	objects := flag.String("objects", "NONE", "Print the Object list (arg can be CSV)")
 
 	flag.Parse()
 	*words = strings.ToUpper(*words)
 	*logic = strings.ToUpper(*logic)
+	*objects = strings.ToUpper(*objects)
 
 	// set the root directory of the game
 	rootDir := "."
@@ -31,6 +33,9 @@ func main() {
 	}
 	if *logic != "NONE" {
 		options |= agi.Load_LogicDir
+	}
+	if *objects != "NONE" {
+		options |= agi.Load_Objects
 	}
 
 	game, err := agi.NewGame(rootDir, options)
@@ -48,6 +53,14 @@ func main() {
 		formatWordsCSV(game.Words)
 	case "TABLE":
 		formatWordsTable(game.Words)
+	}
+
+	switch *objects {
+	case "CSV":
+		fmt.Printf("\"ID\",\"Name\",\"Starting Room\",\"Max-Anim: %d\"\n", game.Objects.MaxAnimated)
+		for idx, obj := range game.Objects.Objects {
+			fmt.Printf("\"%d\",\"%s\",\"%d\"\n", idx, obj.Name, obj.StartingRoom)
+		}
 	}
 
 	switch *logic {

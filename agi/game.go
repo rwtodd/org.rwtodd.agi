@@ -81,6 +81,7 @@ const (
 	Load_PicDir
 	Load_ViewDir
 	Load_SndDir
+	Load_Objects
 	Load_AllMetaData GameLoadOption = 0xffff
 )
 
@@ -111,6 +112,7 @@ type Game struct {
 	RootDir  string            // the filesystem root of the game
 	Version  Version           // the AGI version of this game
 	Words    map[string]uint16 // the WORDS.TOK info
+	Objects  ObjectList        // the OBJECTS list of objects
 	LogicDir []DirEntry        // index to the LOGIC scripts
 	PicDir   []DirEntry        // index to the PIC resources
 	ViewDir  []DirEntry        // index to the VIEW resources
@@ -125,13 +127,8 @@ func NewGame(rootDir string, options GameLoadOption) (*Game, error) {
 		return nil, err
 	}
 	game := &Game{
-		RootDir:  rootDir,
-		Version:  ver,
-		Words:    nil,
-		LogicDir: nil,
-		PicDir:   nil,
-		ViewDir:  nil,
-		SoundDir: nil,
+		RootDir: rootDir,
+		Version: ver,
 	}
 
 	// if we need to load WORDS.TOK, do so.
@@ -169,9 +166,15 @@ func NewGame(rootDir string, options GameLoadOption) (*Game, error) {
 				return nil, err
 			}
 		}
+		if options&Load_Objects > 0 {
+			game.Objects, err = loadObjects_V2(rootDir)
+			if err != nil {
+				return nil, err
+			}
+		}
 	} else {
 		// TODO ... load V3 indices...
-		if options&(Load_LogicDir|Load_PicDir|Load_SndDir|Load_ViewDir) > 0 {
+		if options&(Load_LogicDir|Load_Objects|Load_PicDir|Load_SndDir|Load_ViewDir) > 0 {
 			return nil, errors.New("Cannot load V3 resources!")
 		}
 	}
@@ -199,6 +202,15 @@ func loadResDir_V2(rootDir string, fname string) ([]DirEntry, error) {
 		entries = append(entries, entry)
 	}
 	return entries, nil
+}
+
+func loadObjects_V2(rootDir string) (ObjectList, error) {
+	path := filepath.Join(rootDir, "OBJECT")
+	objectBytes, err := ioutil.ReadFile(path)
+	if err != nil {
+		return ObjectList{}, err
+	}
+	return parseObjects(decode(Avis_Durgan, objectBytes))
 }
 
 func loadWordsTok(rootDir string) (map[string]uint16, error) {

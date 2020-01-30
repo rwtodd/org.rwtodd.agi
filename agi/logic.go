@@ -1,7 +1,6 @@
 package agi
 
 import (
-	"bytes"
 	"fmt"
 )
 
@@ -35,17 +34,6 @@ func (g *Game) LoadLogic(num int) (*Logic, error) {
 	} else {
 		return nil, fmt.Errorf("Cannot load V3 logic resources!")
 	}
-}
-
-// return the null-terminated ascii string from `src`, which
-// starts at offset `offs`.
-func asciizString(src []byte, offs int) string {
-	src = src[offs:]
-	endIdx := bytes.IndexByte(src, 0)
-	if endIdx == -1 {
-		return string(src)
-	}
-	return string(src[:endIdx])
 }
 
 // parses the decoded logic script bytes
