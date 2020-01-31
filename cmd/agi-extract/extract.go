@@ -16,7 +16,7 @@ func main() {
 	words := flag.Bool("words", false, "Output Words.TOK contents")
 	logic := flag.Bool("logic", false, "Output Logic Scripts")
 	objects := flag.Bool("objects", false, "Output the Object list")
-	// restrict := flag.Int("n", -1, "Only output this item (-1 for all)")
+	restrict := flag.Int("n", -1, "Only output this item (-1 for all)")
 	all := flag.Bool("all", false, "Equivalent to /ver/words/logic/objects/n:-1")
 
 	flag.Parse()
@@ -84,7 +84,7 @@ func main() {
 	}
 
 	if *logic {
-		if err = outputLogic(game, *od); err != nil {
+		if err = outputLogic(game, *od, *restrict); err != nil {
 			fmt.Println("Cant' output logic: ", err)
 			os.Exit(1)
 		}
@@ -124,9 +124,9 @@ func outputObjects(game *agi.Game, odir string) error {
 	return obFile.Close()
 }
 
-func outputLogic(game *agi.Game, odir string) error {
+func outputLogic(game *agi.Game, odir string, n int) error {
 	for i, entry := range game.LogicDir {
-		if entry.IsPresent() {
+		if entry.IsPresent() && (i == n || n == -1) {
 			logic, err := game.LoadLogic(i)
 			if err != nil {
 				fmt.Printf("Logic %d ERROR: %v\n", i, err)
