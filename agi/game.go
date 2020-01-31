@@ -2,12 +2,16 @@ package agi
 
 import (
 	"bufio"
+	"bytes"
+	"compress/lzw"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 // Various processing depends on the AGI version of a game,
@@ -111,6 +115,7 @@ func (de DirEntry) String() string {
 type Game struct {
 	RootDir  string            // the filesystem root of the game
 	Version  Version           // the AGI version of this game
+	Prefix   string            // Volume/DIR Prefix, only for V3
 	Words    map[string]uint16 // the WORDS.TOK info
 	Objects  ObjectList        // the OBJECTS list of objects
 	LogicDir []DirEntry        // index to the LOGIC scripts
@@ -139,7 +144,7 @@ func NewGame(rootDir string, options GameLoadOption) (*Game, error) {
 		return nil, err
 	}
 
-    // if we need to load OBJECT, do so
+	// if we need to load OBJECT, do so
 	if options&Load_Objects > 0 {
 		game.Objects, err = loadObjects(game)
 		if err != nil {
@@ -175,25 +180,39 @@ func NewGame(rootDir string, options GameLoadOption) (*Game, error) {
 			}
 		}
 	} else {
-		// TODO ... load V3 indices...
 		if options&(Load_LogicDir|Load_PicDir|Load_SndDir|Load_ViewDir) > 0 {
-			return nil, errors.New("Cannot load V3 resources!")
+			// for V3 games, we need to figure out the filename prefixes...
+			game.Prefix, err = determinePrefix(rootDir)
+			if err != nil {
+				return nil, err
+			}
+
+			// ... and just load all the resource directories at once
+			err = loadResDirs_V3(game)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
 	return game, nil
 }
 
-// Load an AGI V2 resource directory from disk, and parse it
-func loadResDir_V2(rootDir string, fname string) ([]DirEntry, error) {
-	path := filepath.Join(rootDir, fname)
-	src, err := ioutil.ReadFile(path)
-	if err != nil {
-		return nil, err
+// Figure out the prefix on the DIR and VOL files, for V3 games
+func determinePrefix(rootDir string) (string, error) {
+	matches, err := filepath.Glob(filepath.Join(rootDir, "*VOL.0"))
+	if err != nil || len(matches) == 0 {
+		return "", errors.New("Couldn't find prefix on VOL.0!")
 	}
+	prefix := strings.TrimSuffix(filepath.Base(matches[0]), "VOL.0")
+	return prefix, nil
+}
+
+// Parse a set of directory entries (e.g., from LOGDIR)
+func parseResDir(src []byte) ([]DirEntry, error) {
 	var srcLen = len(src)
 	if srcLen%3 != 0 {
-		return nil, errors.New(fname + ": resource directory size must be a multiple of 3!")
+		return nil, errors.New("resource directory size must be a multiple of 3!")
 	}
 
 	var entries = make([]DirEntry, 0, srcLen/3)
@@ -204,6 +223,48 @@ func loadResDir_V2(rootDir string, fname string) ([]DirEntry, error) {
 		entries = append(entries, entry)
 	}
 	return entries, nil
+}
+
+// Load an AGI V2 resource directory from disk, and parse it
+func loadResDir_V2(rootDir string, fname string) ([]DirEntry, error) {
+	path := filepath.Join(rootDir, fname)
+	src, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return parseResDir(src)
+}
+
+// Load the AGI V3 resource directories from disk, and parse them. Since
+// we have to open the file, we might as well parse them all, I think.
+func loadResDirs_V3(game *Game) error {
+	path := filepath.Join(game.RootDir, game.Prefix+"DIR")
+	src, err := ioutil.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	offset1 := int(src[0]) | (int(src[1]) << 8)
+	offset2 := int(src[2]) | (int(src[3]) << 8)
+	game.LogicDir, err = parseResDir(src[offset1:offset2])
+	if err != nil {
+		return err
+	}
+
+	offset1, offset2 = offset2, int(src[4])|(int(src[5])<<8)
+	game.PicDir, err = parseResDir(src[offset1:offset2])
+	if err != nil {
+		return err
+	}
+
+	offset1, offset2 = offset2, int(src[6])|(int(src[7])<<8)
+	game.ViewDir, err = parseResDir(src[offset1:offset2])
+	if err != nil {
+		return err
+	}
+
+	game.SoundDir, err = parseResDir(src[offset2:])
+	return err
 }
 
 // Loads the OBJECT file, decoding it if necessary.
@@ -256,4 +317,51 @@ func loadResource_V2(rootDir string, de DirEntry) ([]byte, error) {
 	var resource = make([]byte, reslen)
 	_, err = volFile.ReadAt(resource, offset+5)
 	return resource, err
+}
+
+// load a version-3 resource as a byte array, raw and unprocessed
+func loadResource_V3(game *Game, de DirEntry) ([]byte, error) {
+	if !de.IsPresent() {
+		return nil, errors.New("Resource isn't present!")
+	}
+
+	// first, open the file and read the resource header
+	path := filepath.Join(game.RootDir, fmt.Sprintf("%sVOL.%d", game.Prefix, de.volume))
+	volFile, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	var header = make([]byte, 7)
+	var offset = int64(de.offset)
+	_, err = volFile.ReadAt(header, offset)
+	if err != nil {
+		return nil, err
+	}
+	if header[0] != 0x12 || header[1] != 0x34 || (header[2]&0x7f) != de.volume {
+		return nil, errors.New("Invalid resource header!")
+	}
+
+	// second, pull the resource bytes out of the file
+	var reslen = uint32(header[3]) | (uint32(header[4]) << 8)
+	var lzwlen = uint32(header[5]) | (uint32(header[6]) << 8)
+
+	var diskBytes = make([]byte, lzwlen)
+	if _, err = volFile.ReadAt(diskBytes, offset+7); err != nil {
+		return nil, err
+	}
+
+	// we have the resource now... decompress it if necessary...
+	switch {
+	case (header[2] & 0x80) > 0:
+		// TODO... PicCompression
+		return nil, errors.New("TODO: Pic Compression")
+	case lzwlen != reslen:
+		var resource = make([]byte, reslen)
+		var expander = lzw.NewReader(bytes.NewReader(diskBytes), lzw.LSB, 8)
+		_, err = io.ReadFull(expander, resource)
+		expander.Close()
+		return resource, err
+	default:
+		return diskBytes, nil
+	}
 }

@@ -17,9 +17,12 @@ func (g *Game) LoadLogic(num int) (*Logic, error) {
 		return nil, fmt.Errorf("Logic Resource %d does not exist!", num)
 	}
 
+	var raw []byte
+	var err error
+
 	if g.Version.IsV2() {
 		// step 1: get the raw bytes
-		raw, err := loadResource_V2(g.RootDir, g.LogicDir[num])
+		raw, err = loadResource_V2(g.RootDir, g.LogicDir[num])
 		if err != nil {
 			return nil, err
 		}
@@ -29,11 +32,14 @@ func (g *Game) LoadLogic(num int) (*Logic, error) {
 		var msgIndexLen = 2 * int(raw[textArea])
 		_ = decode(Avis_Durgan, raw[textArea+3+msgIndexLen:])
 
-		// step 3: parse the script
-		return parseLogic(raw)
 	} else {
-		return nil, fmt.Errorf("Cannot load V3 logic resources!")
+		raw, err = loadResource_V3(g, g.LogicDir[num])
+		if err != nil {
+			return nil, err
+		}
 	}
+
+	return parseLogic(raw)
 }
 
 // parses the decoded logic script bytes
