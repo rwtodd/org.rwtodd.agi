@@ -138,7 +138,7 @@ func outputLogic(game *agi.Game, odir string, n int) error {
 				}
 				logBuf := bufio.NewWriter(logFile)
 				for mnum, msg := range logic.Messages {
-					fmt.Fprintf(logBuf, "Logic %d Msg %d: <%s>\n", i, mnum, msg)
+					fmt.Fprintf(logBuf, "Logic %d Msg %d: <%s>\n", i, mnum+1, msg)
 				}
 				if err = logBuf.Flush(); err != nil {
 					return err

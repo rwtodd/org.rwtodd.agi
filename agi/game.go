@@ -3,7 +3,7 @@ package agi
 import (
 	"bufio"
 	"bytes"
-	"compress/lzw"
+	//	"compress/lzw"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/rwtodd/agi-tools/agi/lzw"
 )
 
 // Various processing depends on the AGI version of a game,
