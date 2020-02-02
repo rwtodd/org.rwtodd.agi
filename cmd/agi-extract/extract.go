@@ -58,36 +58,47 @@ func main() {
 		os.Exit(1)
 	}
 
+	var errCount int = 0
 	if *ver {
 		if err = outputVersion(game, *od); err != nil {
-			fmt.Println("Can't output version: ", err)
-			os.Exit(1)
+			fmt.Fprintln(os.Stderr, "Can't output version: ", err)
+			errCount++
 		}
 	}
 
 	if *words {
 		if err = formatWordsCSV(game, *od); err != nil {
-			fmt.Println("Can't output words csv: ", err)
-			os.Exit(1)
+			fmt.Fprintln(os.Stderr, "Can't output words csv: ", err)
+			errCount++
 		}
 		if err = formatWordsTable(game, *od); err != nil {
-			fmt.Println("Can't output words table: ", err)
-			os.Exit(1)
+			fmt.Fprintln(os.Stderr, "Can't output words table: ", err)
+			errCount++
 		}
 	}
 
 	if *objects {
 		if err = outputObjects(game, *od); err != nil {
-			fmt.Println("Can't output objects: ", err)
-			os.Exit(1)
+			fmt.Fprintln(os.Stderr, "Can't output objects: ", err)
+			errCount++
 		}
 	}
 
 	if *logic {
-		if err = outputLogic(game, *od, *restrict); err != nil {
-			fmt.Println("Cant' output logic: ", err)
-			os.Exit(1)
+		min, max := 0, len(game.LogicDir)
+		if *restrict >= 0 {
+			min, max = *restrict, *restrict+1
 		}
+		for i := min; i < max; i++ {
+			if err := outputLogic(game, *od, i); err != nil {
+				fmt.Fprintf(os.Stderr, "Can't output logic %d: %v\n", i, err)
+				errCount++
+			}
+		}
+	}
+
+	if errCount > 0 {
+		os.Exit(1)
 	}
 }
 
@@ -122,32 +133,4 @@ func outputObjects(game *agi.Game, odir string) error {
 		return err
 	}
 	return obFile.Close()
-}
-
-func outputLogic(game *agi.Game, odir string, n int) error {
-	for i, entry := range game.LogicDir {
-		if entry.IsPresent() && (i == n || n == -1) {
-			logic, err := game.LoadLogic(i)
-			if err != nil {
-				fmt.Printf("Logic %d ERROR: %v\n", i, err)
-			} else {
-				path := filepath.Join(odir, fmt.Sprintf("logic_%03d.txt", i))
-				logFile, err := os.Create(path)
-				if err != nil {
-					return err
-				}
-				logBuf := bufio.NewWriter(logFile)
-				for mnum, msg := range logic.Messages {
-					fmt.Fprintf(logBuf, "Logic %d Msg %d: <%s>\n", i, mnum+1, msg)
-				}
-				if err = logBuf.Flush(); err != nil {
-					return err
-				}
-				if err = logFile.Close(); err != nil {
-					return err
-				}
-			}
-		}
-	}
-	return nil
 }
