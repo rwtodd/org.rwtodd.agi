@@ -39,7 +39,7 @@ func main() {
 	}
 	if *logic {
 		// logic script decompilation needs several resource types
-		options |= agi.Load_LogicDir | agi.Load_WordsTok | agi.Load_WordSynonyms
+		options |= agi.Load_LogicDir | agi.Load_WordsTok | agi.Load_WordSynonyms | agi.Load_Objects
 	}
 	if *objects {
 		options |= agi.Load_Objects

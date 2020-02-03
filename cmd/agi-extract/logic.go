@@ -86,6 +86,28 @@ type agiByteCode struct {
 	argCount uint8
 }
 
+var agiTestCodes = [...]agiByteCode{
+	agiByteCode{"UNKNOWN", [7]argType{}, 0},              // 0
+	agiByteCode{"equaln", [7]argType{argVar, argNum}, 2}, // 1
+	agiByteCode{"equalv", [7]argType{argVar, argVar}, 2},
+	agiByteCode{"lessn", [7]argType{argVar, argNum}, 2},
+	agiByteCode{"lessv", [7]argType{argVar, argVar}, 2},
+	agiByteCode{"greatern", [7]argType{argVar, argNum}, 2}, // 5
+	agiByteCode{"greaterv", [7]argType{argVar, argVar}, 2}, // 6
+	agiByteCode{"isset", [7]argType{argFlg}, 1},
+	agiByteCode{"issetv", [7]argType{argVar}, 1},
+	agiByteCode{"has", [7]argType{argInv}, 1},
+	agiByteCode{"obj.in.room", [7]argType{argInv, argVar}, 2},
+	agiByteCode{"posn", [7]argType{argObj, argNum, argNum, argNum, argNum}, 5}, // 11
+	agiByteCode{"controller", [7]argType{argCtl}, 1},
+	agiByteCode{"have.key", [7]argType{}, 0},
+	agiByteCode{"said", [7]argType{}, 0}, // special arg-handling for "said"
+	agiByteCode{"compare.strings", [7]argType{argStr, argStr}, 2},
+	agiByteCode{"obj.in.box", [7]argType{argObj, argNum, argNum, argNum, argNum}, 5}, // 16
+	agiByteCode{"center.posn", [7]argType{argObj, argNum, argNum, argNum, argNum}, 5},
+	agiByteCode{"right.posn", [7]argType{argObj, argNum, argNum, argNum, argNum}, 5},
+}
+
 var agiByteCodes = [...]agiByteCode{
 	agiByteCode{"return", [7]argType{}, 0}, // 0
 	agiByteCode{"increment", [7]argType{argVar}, 1},
@@ -346,10 +368,13 @@ func (pl agiParsedLogic) format(g *agi.Game, msgs []string, w io.Writer, indent 
 			if int(arg) < len(variableInfo) {
 				extra_info = append(extra_info, fmt.Sprintf("%s;; var %d = <%s>", indent, arg, variableInfo[arg]))
 			}
+		case argInv:
+			if int(arg) < len(g.Objects.Objects) {
+				extra_info = append(extra_info, fmt.Sprintf("%s;; inv %d = <%s>", indent, arg, g.Objects.Objects[arg].Name))
+			}
 		}
 	}
 
-	// TODO: format the arguments
 	_, err := fmt.Fprintf(w,
 		"%s%s(%s) ;; %X\n",
 		indent,
