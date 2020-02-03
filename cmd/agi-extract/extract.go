@@ -35,10 +35,11 @@ func main() {
 
 	var options agi.GameLoadOption
 	if *words {
-		options |= agi.Load_WordsTok
+		options |= agi.Load_WordsTok | agi.Load_WordSynonyms
 	}
 	if *logic {
-		options |= agi.Load_LogicDir | agi.Load_WordsTok
+		// logic script decompilation needs several resource types
+		options |= agi.Load_LogicDir | agi.Load_WordsTok | agi.Load_WordSynonyms
 	}
 	if *objects {
 		options |= agi.Load_Objects

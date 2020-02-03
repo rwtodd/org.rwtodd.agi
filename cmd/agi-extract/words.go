@@ -38,10 +38,7 @@ func formatWordsCSV(game *agi.Game, odir string) error {
 // format the WORDS.TOK data as a text table, ordered by the
 // category number.
 func formatWordsTable(game *agi.Game, odir string) error {
-	var invMap = make(map[uint16][]string)
-	for k, v := range game.Words {
-		invMap[v] = append(invMap[v], k)
-	}
+	var invMap = game.Synonyms
 	var keys = make([]int, 0, len(invMap))
 	for k := range invMap {
 		keys = append(keys, int(k))

@@ -3,7 +3,6 @@ package agi
 import (
 	"bufio"
 	"bytes"
-	//	"compress/lzw"
 	"errors"
 	"fmt"
 	"io"
@@ -83,6 +82,7 @@ type GameLoadOption uint16
 
 const (
 	Load_WordsTok GameLoadOption = 1 << iota
+	Load_WordSynonyms
 	Load_LogicDir
 	Load_PicDir
 	Load_ViewDir
@@ -115,15 +115,16 @@ func (de DirEntry) String() string {
 
 // The master struct for AGI game information.
 type Game struct {
-	RootDir  string            // the filesystem root of the game
-	Version  Version           // the AGI version of this game
-	Prefix   string            // Volume/DIR Prefix, only for V3
-	Words    map[string]uint16 // the WORDS.TOK info
-	Objects  ObjectList        // the OBJECTS list of objects
-	LogicDir []DirEntry        // index to the LOGIC scripts
-	PicDir   []DirEntry        // index to the PIC resources
-	ViewDir  []DirEntry        // index to the VIEW resources
-	SoundDir []DirEntry        // index to the SOUND resources
+	RootDir  string              // the filesystem root of the game
+	Version  Version             // the AGI version of this game
+	Prefix   string              // Volume/DIR Prefix, only for V3
+	Words    map[string]uint16   // the WORDS.TOK info
+	Synonyms map[uint16][]string // inverse map of Words
+	Objects  ObjectList          // the OBJECTS list of objects
+	LogicDir []DirEntry          // index to the LOGIC scripts
+	PicDir   []DirEntry          // index to the PIC resources
+	ViewDir  []DirEntry          // index to the VIEW resources
+	SoundDir []DirEntry          // index to the SOUND resources
 }
 
 // Construct a Game struct, given the root directory of
@@ -140,10 +141,14 @@ func NewGame(rootDir string, options GameLoadOption) (*Game, error) {
 
 	// if we need to load WORDS.TOK, do so.
 	if options&Load_WordsTok > 0 {
-		game.Words, err = loadWordsTok(rootDir)
+		if game.Words, err = loadWordsTok(rootDir); err != nil {
+			return nil, err
+		}
 	}
-	if err != nil {
-		return nil, err
+
+	// if we need to do reverse lookups on words, store the reverse dictionary
+	if options&Load_WordSynonyms > 0 {
+		game.Synonyms = reverseWordsTok(game.Words)
 	}
 
 	// if we need to load OBJECT, do so

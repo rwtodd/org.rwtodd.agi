@@ -78,6 +78,8 @@ const (
 	argWrd
 )
 
+var argTypePrefixes = []string{"", "", "%o", "%c", "%v", "%i", "%t", "%f", "%s", "%m", "%w"}
+
 type agiByteCode struct {
 	name     string
 	argTypes [7]argType
@@ -312,49 +314,70 @@ func numArgs(g *agi.Game, byteCode uint8) (args int) {
 // are the three implementations at present.
 type agiParsedCommand interface {
 	size() int
-	format(g *agi.Game, w io.Writer, indent string) error
+	format(g *agi.Game, msgs []string, w io.Writer, indent string) error
 }
 
-// Logic commands are parsed into agiParsedLogic structs
-type agiParsedLogic struct {
-	code  *agiByteCode // the parsed code
-	bytes []byte       // the raw source
-}
+// Logic commands are parsed into agiParsedLogic's, which are simply
+// the bytecodes involved
+type agiParsedLogic []byte
 
 // *agiParsedLogic's are agiParsedCommands
-func (pl *agiParsedLogic) size() int {
-	return len(pl.bytes)
+func (pl agiParsedLogic) size() int {
+	return len(pl)
 }
 
-func (pl *agiParsedLogic) format(g *agi.Game, w io.Writer, indent string) error {
-	var args []string = nil
+func (pl agiParsedLogic) format(g *agi.Game, msgs []string, w io.Writer, indent string) error {
+	var extra_info, argstr []string
+	var code = &agiByteCodes[pl[0]]
+	argstr = make([]string, 0, len(pl)-1)
+
+	// traverse the arguments...
+	for idx, arg := range pl[1:] {
+		at := code.argTypes[idx]
+		argstr = append(argstr, fmt.Sprintf("%s%d", argTypePrefixes[at], arg))
+		switch at {
+		case argMsg:
+			extra_info = append(extra_info, fmt.Sprintf("%s;; msg %d = <%s>", indent, arg, msgs[arg-1]))
+		case argFlg:
+			if int(arg) < len(flagInfo) {
+				extra_info = append(extra_info, fmt.Sprintf("%s;; flg %d = <%s>", indent, arg, flagInfo[arg]))
+			}
+		case argVar:
+			if int(arg) < len(variableInfo) {
+				extra_info = append(extra_info, fmt.Sprintf("%s;; var %d = <%s>", indent, arg, variableInfo[arg]))
+			}
+		}
+	}
+
 	// TODO: format the arguments
 	_, err := fmt.Fprintf(w,
 		"%s%s(%s) ;; %X\n",
 		indent,
-		pl.code.name,
-		strings.Join(args, ", "),
-		pl.bytes)
+		code.name,
+		strings.Join(argstr, ", "),
+		pl)
 	if err != nil {
 		return err
 	}
-	// TODO: append any supplementary info about the args (flags, vars, etc)
+
+	for _, ei := range extra_info {
+		_, err = fmt.Fprintln(w, ei)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
 // create an agiParsedLogic from `src`
-func newParsedLogic(g *agi.Game, src []byte) (*agiParsedLogic, error) {
+func newParsedLogic(g *agi.Game, src []byte) (agiParsedLogic, error) {
 	code := src[0]
 	args := numArgs(g, code)
 	if len(src) < args+1 {
 		return nil, fmt.Errorf("ByteCode %d [%X]: Not enough room for %d args!", code, src, args)
 	}
-	// DEBUG
-	tmp := &agiParsedLogic{&agiByteCodes[code], src[0 : args+1]}
-	tmp.format(g, os.Stderr, ">>")
-	fmt.Fprintf(os.Stderr, ">>Size: %d\n", tmp.size())
-	// END DEBUG
-	return &agiParsedLogic{&agiByteCodes[code], src[0 : args+1]}, nil
+	return agiParsedLogic(src[0 : args+1]), nil
 }
 
 // a ParsedIf contains all the portions of an if/then/else series of
@@ -382,7 +405,7 @@ func (pi *agiParsedIf) size() int {
 	return total
 }
 
-func (pi *agiParsedIf) format(g *agi.Game, w io.Writer, indent string) error {
+func (pi *agiParsedIf) format(g *agi.Game, msgs []string, w io.Writer, indent string) error {
 	// TODO: format the conditions
 	var err error
 	var moreIndent = indent + "    "
@@ -391,7 +414,7 @@ func (pi *agiParsedIf) format(g *agi.Game, w io.Writer, indent string) error {
 		return err
 	}
 	for _, pc := range pi.thenPart {
-		if err = pc.format(g, w, moreIndent); err != nil {
+		if err = pc.format(g, msgs, w, moreIndent); err != nil {
 			return err
 		}
 	}
@@ -401,7 +424,7 @@ func (pi *agiParsedIf) format(g *agi.Game, w io.Writer, indent string) error {
 			return err
 		}
 		for _, pc := range pi.elsePart {
-			if err = pc.format(g, w, moreIndent); err != nil {
+			if err = pc.format(g, msgs, w, moreIndent); err != nil {
 				return err
 			}
 		}
@@ -478,7 +501,7 @@ func (pg *agiParsedGoto) size() int {
 	return 3
 }
 
-func (pg *agiParsedGoto) format(g *agi.Game, w io.Writer, indent string) error {
+func (pg *agiParsedGoto) format(g *agi.Game, msgs []string, w io.Writer, indent string) error {
 	if _, err := fmt.Fprintf(w, "%sGOTO %d\n", indent, pg.target); err != nil {
 		return err
 	}
@@ -550,7 +573,7 @@ func outputLogic(game *agi.Game, odir string, i int) error {
 			return err
 		}
 		for _, pc := range cmds {
-			if err = pc.format(game, logBuf, ""); err != nil {
+			if err = pc.format(game, logic.Messages, logBuf, ""); err != nil {
 				logBuf.Flush()
 				logFile.Close()
 				return err

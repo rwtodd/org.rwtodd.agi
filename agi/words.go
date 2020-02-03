@@ -41,3 +41,13 @@ func parseWordsTok(src []byte) map[string]uint16 {
 	}
 	return words
 }
+
+// invert the WORDS.TOK map, so that it goes from a numeric code to
+// a list of synonyms
+func reverseWordsTok(words map[string]uint16) map[uint16][]string {
+	var invMap = make(map[uint16][]string)
+	for k, v := range words {
+		invMap[v] = append(invMap[v], k)
+	}
+	return invMap
+}
