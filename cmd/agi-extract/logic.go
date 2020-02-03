@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -101,7 +100,7 @@ var agiTestCodes = [...]agiByteCode{
 	agiByteCode{"posn", [7]argType{argObj, argNum, argNum, argNum, argNum}, 5}, // 11
 	agiByteCode{"controller", [7]argType{argCtl}, 1},
 	agiByteCode{"have.key", [7]argType{}, 0},
-	agiByteCode{"said", [7]argType{}, 0}, // special arg-handling for "said"
+	agiByteCode{"said", [7]argType{}, 0}, // special arg-handling for "said" 14
 	agiByteCode{"compare.strings", [7]argType{argStr, argStr}, 2},
 	agiByteCode{"obj.in.box", [7]argType{argObj, argNum, argNum, argNum, argNum}, 5}, // 16
 	agiByteCode{"center.posn", [7]argType{argObj, argNum, argNum, argNum, argNum}, 5},
@@ -405,19 +404,190 @@ func newParsedLogic(g *agi.Game, src []byte) (agiParsedLogic, error) {
 	return agiParsedLogic(src[0 : args+1]), nil
 }
 
+// Test commands are very similary to agiParsedLogic's, only they come from a different
+// set of agiByteCode's.  `agiParsedTest` type handles them all except 'said', which needs
+// special argument handling and gets its own type.
+type agiParsedTest []byte
+
+// *agiParsedLogic's are agiParsedCommands
+func (pt agiParsedTest) size() int {
+	return len(pt)
+}
+
+func (pt agiParsedTest) format(g *agi.Game, msgs []string, w io.Writer, indent string) error {
+	var extra_info, argstr []string
+	var code = &agiTestCodes[pt[0]]
+	argstr = make([]string, 0, len(pt)-1)
+
+	// traverse the arguments...
+	for idx, arg := range pt[1:] {
+		at := code.argTypes[idx]
+		argstr = append(argstr, fmt.Sprintf("%s%d", argTypePrefixes[at], arg))
+		switch at {
+		case argFlg:
+			if int(arg) < len(flagInfo) {
+				extra_info = append(extra_info, fmt.Sprintf("%s;; flg %d = <%s>", indent, arg, flagInfo[arg]))
+			}
+		case argVar:
+			if int(arg) < len(variableInfo) {
+				extra_info = append(extra_info, fmt.Sprintf("%s;; var %d = <%s>", indent, arg, variableInfo[arg]))
+			}
+		case argInv:
+			if int(arg) < len(g.Objects.Objects) {
+				extra_info = append(extra_info, fmt.Sprintf("%s;; inv %d = <%s>", indent, arg, g.Objects.Objects[arg].Name))
+			}
+		}
+	}
+
+	_, err := fmt.Fprintf(w,
+		"%s%s(%s) ;; %X\n",
+		indent,
+		code.name,
+		strings.Join(argstr, ", "),
+		pt)
+	if err != nil {
+		return err
+	}
+
+	for _, ei := range extra_info {
+		_, err = fmt.Fprintln(w, ei)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// 'said' commands are lists of words.tok categories, which are 16 bits each
+type agiParsedSaid []uint16
+
+func (ps agiParsedSaid) size() int {
+	return 2*len(ps) + 2 // +1 for the 'said' bytecode + 1 for the length code
+}
+
+func (ps agiParsedSaid) format(g *agi.Game, msgs []string, w io.Writer, indent string) error {
+	var extra_info, argstr []string
+	argstr = make([]string, 0, len(ps))
+	extra_info = make([]string, 0, len(ps))
+
+	for _, arg := range ps {
+		argstr = append(argstr, fmt.Sprintf("%d", arg))
+		// collect synonyms...
+		extra_info = append(extra_info, fmt.Sprintf("%s;; word %d = <%s>", indent, arg, strings.Join(g.Synonyms[arg], ">, <")))
+	}
+
+	_, err := fmt.Fprintf(w,
+		"%ssaid(%s) ;; %X\n",
+		indent,
+		strings.Join(argstr, ", "),
+		ps)
+	if err != nil {
+		return err
+	}
+
+	for _, ei := range extra_info {
+		_, err = fmt.Fprintln(w, ei)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// create an agiParsedTest, or agiParsedSaid, from `src`
+func newParsedTest(src []byte) (agiParsedCommand, error) {
+	code := src[0]
+	if int(code) > len(agiTestCodes) {
+		return nil, fmt.Errorf("Bad test bytecode %d", code)
+	}
+	if code == 14 {
+		// parse a 'said' command
+		if len(src) < 2 || len(src) < (2+2*int(src[1])) {
+			return nil, errors.New("Not enough bytes for 'said' arguments!")
+		}
+		result, srcIdx := make(agiParsedSaid, int(src[1])), 2
+		for rIdx := range result {
+			result[rIdx] = uint16(src[srcIdx]) | (uint16(src[srcIdx+1]) << 8)
+			srcIdx += 2
+		}
+		return result, nil
+	}
+
+	// it's not a 'said' command, so parse it via `agiTestCodes`
+	args := int(agiTestCodes[code].argCount)
+	if len(src) < args+1 {
+		return nil, fmt.Errorf("ByteCode %d [%X]: Not enough room for %d args!", code, src, args)
+	}
+	return agiParsedTest(src[0 : args+1]), nil
+}
+
+// a ParsedNOT contains a single parsed command, with a NOT prefix
+type agiParsedNot struct {
+	negated agiParsedCommand
+}
+
+func (pn agiParsedNot) size() int {
+	return 1 + pn.negated.size()
+}
+func (pn agiParsedNot) format(g *agi.Game, msgs []string, w io.Writer, indent string) error {
+	var err error
+	var moreIndent = indent + "    "
+
+	if _, err = fmt.Fprintf(w, "%sNOT(  ;; FD \n", indent); err != nil {
+		return err
+	}
+	if err = pn.negated.format(g, msgs, w, moreIndent); err != nil {
+		return err
+	}
+	if _, err = fmt.Fprintf(w, "%s)  ;; (FD) \n", indent); err != nil {
+		return err
+	}
+	return nil
+
+}
+
+// a ParsedOR contains a set of conditions that are logically-ORed together
+type agiParsedOr []agiParsedCommand
+
+func (po agiParsedOr) size() int {
+	var total int = 2
+	for _, pc := range po {
+		total += pc.size()
+	}
+	return total
+}
+
+func (po agiParsedOr) format(g *agi.Game, msgs []string, w io.Writer, indent string) error {
+	var err error
+	var moreIndent = indent + "    "
+
+	if _, err = fmt.Fprintf(w, "%sOR(  ;; FC \n", indent); err != nil {
+		return err
+	}
+	for _, pc := range po {
+		if err = pc.format(g, msgs, w, moreIndent); err != nil {
+			return err
+		}
+	}
+	if _, err = fmt.Fprintf(w, "%s)  ;; FC \n", indent); err != nil {
+		return err
+	}
+	return nil
+}
+
 // a ParsedIf contains all the portions of an if/then/else series of
 // statements
 type agiParsedIf struct {
-	condition          []byte             // the conditional tests
-	thenPart, elsePart []agiParsedCommand // the two branches for then/else
+	condition, thenPart, elsePart []agiParsedCommand // the conditions, and two branches for then/else
 }
 
 // *agiParsedIf's are agiParsedCommands
 func (pi *agiParsedIf) size() int {
-	// DEBUG
-	fmt.Fprintf(os.Stderr, "IF SIZE: [%X] + thenlen %d + elselen %d\n", pi.condition, len(pi.thenPart), len(pi.elsePart))
-	// END DEBUG
-	var total int = len(pi.condition) + 4 // 2 for the 0xff's, 2 for if's sizing
+	var total int = 4 // 2 for the 0xff's, 2 for if's sizing
+	for _, pc := range pi.condition {
+		total += pc.size()
+	}
 	for _, pc := range pi.thenPart {
 		total += pc.size()
 	}
@@ -431,13 +601,21 @@ func (pi *agiParsedIf) size() int {
 }
 
 func (pi *agiParsedIf) format(g *agi.Game, msgs []string, w io.Writer, indent string) error {
-	// TODO: format the conditions
 	var err error
 	var moreIndent = indent + "    "
 
-	if _, err = fmt.Fprintf(w, "%sIF(...) { ;; %X\n", indent, pi.condition); err != nil {
+	if _, err = fmt.Fprintf(w, "%sIF(  ;; FF \n", indent); err != nil {
 		return err
 	}
+	for _, pc := range pi.condition {
+		if err = pc.format(g, msgs, w, moreIndent); err != nil {
+			return err
+		}
+	}
+	if _, err = fmt.Fprintf(w, "%s) {  ;; FF \n", indent); err != nil {
+		return err
+	}
+
 	for _, pc := range pi.thenPart {
 		if err = pc.format(g, msgs, w, moreIndent); err != nil {
 			return err
@@ -465,19 +643,74 @@ func signedShort(bs []byte) int16 {
 	return int16(bs[0]) | (int16(bs[1]) << 8)
 }
 
-func newParsedIf(g *agi.Game, src []byte) (*agiParsedIf, error) {
-	// find the end of the if statement
-	end := bytes.IndexByte(src[1:], 0xff)
-	if end == -1 {
-		return nil, errors.New("no end to IF statement!")
+func newParsedTestStream(src []byte) ([]agiParsedCommand, error) {
+	// the first byte tells us the delimiter
+	if len(src) < 2 {
+		return nil, errors.New("src is too short for a test stream!")
 	}
-	if len(src) < end+4 {
-		return nil, fmt.Errorf("Malformed IF, too short (%X)", src)
+	delim, src := src[0], src[1:]
+	fmt.Fprintf(os.Stderr, "delim is %d\n", delim) // DEBUG
+	var result []agiParsedCommand
+
+loop:
+	for {
+		if len(src) == 0 {
+			return nil, errors.New("ran out of bytes parsing test stream!")
+		}
+		// BEGIN DEBUG
+		if len(src) > 20 {
+			fmt.Fprintf(os.Stderr, "testStream looking at: %X\n", src[:20]) // DEBUG
+		} else {
+			fmt.Fprintf(os.Stderr, "testStream looking at: %X\n", src) // DEBUG
+		}
+		// END DEBUG
+		switch src[0] {
+		case delim:
+			break loop
+		case 0xfc:
+			orList, err := newParsedTestStream(src)
+			if err != nil {
+				return nil, err
+			}
+			parsedOr := agiParsedOr(orList)
+			result, src = append(result, parsedOr), src[parsedOr.size():]
+		case 0xfd:
+			tst, err := newParsedTest(src[1:])
+			if err != nil {
+				return nil, err
+			}
+			notCmd := agiParsedNot{tst}
+			result, src = append(result, notCmd), src[notCmd.size():]
+		default:
+			tst, err := newParsedTest(src)
+			if err != nil {
+				return nil, err
+			}
+			result, src = append(result, tst), src[tst.size():]
+		}
+	}
+	return result, nil
+}
+
+func newParsedIf(g *agi.Game, src []byte) (*agiParsedIf, error) {
+	// parse the condition
+	condition, err := newParsedTestStream(src)
+	if err != nil {
+		return nil, err
 	}
 
-	condition, thenLen := src[1:1+end], signedShort(src[2+end:4+end])
-	fmt.Fprintf(os.Stderr, "condition [%X] thenLen %d\n", src[:4+end], thenLen) // DEBUG
-	src = src[4+end:]
+	var condSize int = 2 // 2 for the 0xFFs
+	for _, pc := range condition {
+		condSize += pc.size()
+	}
+
+	src = src[condSize:]
+	if len(src) < 2 {
+		return nil, fmt.Errorf("Malformed IF, too short (%X)", src)
+	}
+	thenLen := signedShort(src[:2])
+	fmt.Fprintf(os.Stderr, "IF thenLen %d\n", thenLen) // DEBUG
+	src = src[2:]
 	if len(src) < int(thenLen) {
 		return nil, fmt.Errorf("Malformed then, too short (%d vs %d)",
 			len(src), thenLen)
@@ -491,8 +724,8 @@ func newParsedIf(g *agi.Game, src []byte) (*agiParsedIf, error) {
 		if elseLen >= 0 {
 			thenSrc = thenSrc[:thenLen-3]
 			if len(src) < int(thenLen+elseLen) {
-				return nil, fmt.Errorf("Malformed then, too short (%d vs %d)",
-					len(src), thenLen+elseLen)
+				return nil, fmt.Errorf("Malformed then+else, too short (%d vs %d)",
+					len(src), int(thenLen+elseLen))
 
 			}
 			elseSrc = src[thenLen : thenLen+elseLen]
