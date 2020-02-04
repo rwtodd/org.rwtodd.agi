@@ -92,11 +92,16 @@ func main() {
 			min, max = *restrict, *restrict+1
 		}
 		for i := min; i < max; i++ {
-			if err := outputLogic(game, *od, i); err != nil {
-				fmt.Fprintf(os.Stderr, "Can't output logic %d (%v): %v\n", i, game.LogicDir[i], err)
-				errCount++
-			}
+			logIndex := i
+			go concurrentTask(func() error {
+				err := outputLogic(game, *od, logIndex)
+				if err != nil {
+					err = fmt.Errorf("Can't output logic %d (%v): %v\n", logIndex, game.LogicDir[logIndex], err)
+				}
+				return err
+			})
 		}
+		errCount += reportNErrors(max - min)
 	}
 
 	if errCount > 0 {
