@@ -309,6 +309,8 @@ func loadResource_V2(rootDir string, de DirEntry) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer volFile.Close()
+
 	var header = make([]byte, 5)
 	var offset = int64(de.offset)
 	_, err = volFile.ReadAt(header, offset)
@@ -338,6 +340,8 @@ func loadResource_V3(game *Game, de DirEntry) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer volFile.Close()
+
 	var header = make([]byte, 7)
 	var offset = int64(de.offset)
 	_, err = volFile.ReadAt(header, offset)
