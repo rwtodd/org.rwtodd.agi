@@ -358,7 +358,9 @@ func (pl agiParsedLogic) format(g *agi.Game, msgs []string, w io.Writer, indent 
 		argstr = append(argstr, fmt.Sprintf("%s%d", argTypePrefixes[at], arg))
 		switch at {
 		case argMsg:
-			extra_info = append(extra_info, fmt.Sprintf("%s;; msg %d = <%s>", indent, arg, msgs[arg-1]))
+			if int(arg)-1 < len(msgs) {
+				extra_info = append(extra_info, fmt.Sprintf("%s;; msg %d = <%s>", indent, arg, msgs[arg-1]))
+			}
 		case argFlg:
 			if int(arg) < len(flagInfo) {
 				extra_info = append(extra_info, fmt.Sprintf("%s;; flg %d = <%s>", indent, arg, flagInfo[arg]))
@@ -649,7 +651,6 @@ func newParsedTestStream(src []byte) ([]agiParsedCommand, error) {
 		return nil, errors.New("src is too short for a test stream!")
 	}
 	delim, src := src[0], src[1:]
-	fmt.Fprintf(os.Stderr, "delim is %d\n", delim) // DEBUG
 	var result []agiParsedCommand
 
 loop:
@@ -657,13 +658,6 @@ loop:
 		if len(src) == 0 {
 			return nil, errors.New("ran out of bytes parsing test stream!")
 		}
-		// BEGIN DEBUG
-		if len(src) > 20 {
-			fmt.Fprintf(os.Stderr, "testStream looking at: %X\n", src[:20]) // DEBUG
-		} else {
-			fmt.Fprintf(os.Stderr, "testStream looking at: %X\n", src) // DEBUG
-		}
-		// END DEBUG
 		switch src[0] {
 		case delim:
 			break loop
@@ -709,28 +703,23 @@ func newParsedIf(g *agi.Game, src []byte) (*agiParsedIf, error) {
 		return nil, fmt.Errorf("Malformed IF, too short (%X)", src)
 	}
 	thenLen := signedShort(src[:2])
-	fmt.Fprintf(os.Stderr, "IF thenLen %d\n", thenLen) // DEBUG
 	src = src[2:]
 	if len(src) < int(thenLen) {
-		return nil, fmt.Errorf("Malformed then, too short (%d vs %d)",
-			len(src), thenLen)
+		fmt.Fprintf(os.Stderr, "SHORTENING THEN section of if/then by %d", int(thenLen)-len(src)) // DEBUG
+		thenLen = int16(len(src))
 	}
 
 	// now check for an ELSE at the end of the then part...
 	var thenSrc, elseSrc []byte = src[:thenLen], nil
+
 	var hasElse = thenLen >= 3 && thenSrc[thenLen-3] == 0xfe
 	if hasElse {
 		elseLen := signedShort(thenSrc[thenLen-2:])
-		if elseLen >= 0 {
+		if elseLen >= 0 && len(src) >= int(thenLen+elseLen) {
 			thenSrc = thenSrc[:thenLen-3]
-			if len(src) < int(thenLen+elseLen) {
-				return nil, fmt.Errorf("Malformed then+else, too short (%d vs %d)",
-					len(src), int(thenLen+elseLen))
-
-			}
 			elseSrc = src[thenLen : thenLen+elseLen]
 		} else {
-			// no else section after all--backwards jump!
+			// no else section after all--backwards jump or jump too far forward!
 			hasElse = false
 		}
 	}
@@ -789,21 +778,11 @@ func parseOneLogic(g *agi.Game, src []byte) (agiParsedCommand, error) {
 func parseManyLogic(g *agi.Game, src []byte) ([]agiParsedCommand, error) {
 	var result []agiParsedCommand = nil
 	for len(src) > 0 {
-		// DEBUG OUTPUT
-		var dbgSlice = src
-		if len(src) > 40 {
-			dbgSlice = src[:40]
-		}
-		fmt.Fprintf(os.Stderr, "pm [%X]\n", dbgSlice)
-		// END DEBUG
 		nxt, err := parseOneLogic(g, src)
 		if err != nil {
 			return nil, err
 		}
 		result = append(result, nxt)
-		// DEBUG
-		fmt.Fprintf(os.Stderr, "last statment (%x) of size %d\n", src[0], nxt.size())
-		// END DEBUG
 		src = src[nxt.size():]
 	}
 	return result, nil

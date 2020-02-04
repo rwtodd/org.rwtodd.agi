@@ -92,7 +92,7 @@ func main() {
 		}
 		for i := min; i < max; i++ {
 			if err := outputLogic(game, *od, i); err != nil {
-				fmt.Fprintf(os.Stderr, "Can't output logic %d: %v\n", i, err)
+				fmt.Fprintf(os.Stderr, "Can't output logic %d (%v): %v\n", i, game.LogicDir[i], err)
 				errCount++
 			}
 		}
