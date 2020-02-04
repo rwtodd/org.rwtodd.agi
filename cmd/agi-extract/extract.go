@@ -50,6 +50,7 @@ func main() {
 		fmt.Println("Error! ", err)
 		os.Exit(1)
 	}
+	defer game.Close()
 
 	// produce the requested output
 	// start with the output directory

@@ -22,7 +22,7 @@ func (g *Game) LoadLogic(num int) (*Logic, error) {
 
 	if g.Version.IsV2() {
 		// step 1: get the raw bytes
-		raw, err = loadResource_V2(g.RootDir, g.LogicDir[num])
+		raw, err = loadResource_V2(g, g.LogicDir[num])
 		if err != nil {
 			return nil, err
 		}

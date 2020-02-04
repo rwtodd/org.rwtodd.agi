@@ -125,6 +125,7 @@ type Game struct {
 	PicDir   []DirEntry          // index to the PIC resources
 	ViewDir  []DirEntry          // index to the VIEW resources
 	SoundDir []DirEntry          // index to the SOUND resources
+	volumes  volumeFiles         // locked access to volume files
 }
 
 // Construct a Game struct, given the root directory of
@@ -162,6 +163,9 @@ func NewGame(rootDir string, options GameLoadOption) (*Game, error) {
 	// if we need to load resource indices, do so based on the
 	// AGI version
 	if game.Version.IsV2() {
+		game.volumes = newVolumeFiles(5,
+			func(i int) string { return filepath.Join(rootDir, fmt.Sprintf("VOL.%d", i)) })
+
 		if options&Load_LogicDir > 0 {
 			game.LogicDir, err = loadResDir_V2(rootDir, "LOGDIR")
 			if err != nil {
@@ -194,6 +198,11 @@ func NewGame(rootDir string, options GameLoadOption) (*Game, error) {
 				return nil, err
 			}
 
+			game.volumes = newVolumeFiles(5,
+				func(i int) string {
+					return filepath.Join(rootDir, fmt.Sprintf("%sVOL.%d", game.Prefix, i))
+				})
+
 			// ... and just load all the resource directories at once
 			err = loadResDirs_V3(game)
 			if err != nil {
@@ -203,6 +212,15 @@ func NewGame(rootDir string, options GameLoadOption) (*Game, error) {
 	}
 
 	return game, nil
+}
+
+// do any resource cleanup when done with a Game.
+func (g *Game) Close() error {
+	var err error
+	if len(g.volumes) > 0 {
+		err = g.volumes.Close()
+	}
+	return err
 }
 
 // Figure out the prefix on the DIR and VOL files, for V3 games
@@ -298,34 +316,29 @@ func loadWordsTok(rootDir string) (map[string]uint16, error) {
 }
 
 // load a version-2 resource as a byte array, raw and unprocessed
-func loadResource_V2(rootDir string, de DirEntry) ([]byte, error) {
+func loadResource_V2(g *Game, de DirEntry) ([]byte, error) {
 	if !de.IsPresent() {
 		return nil, errors.New("Resource isn't present!")
 	}
 
-	// first, open the file and read the resource header
-	path := filepath.Join(rootDir, fmt.Sprintf("VOL.%d", de.volume))
-	volFile, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer volFile.Close()
+	return g.volumes.LockedOperation(int(de.volume), func(volFile *os.File) ([]byte, error) {
+		var err error
+		var header = make([]byte, 5)
+		var offset = int64(de.offset)
+		_, err = volFile.ReadAt(header, offset)
+		if err != nil {
+			return nil, err
+		}
+		if header[0] != 0x12 || header[1] != 0x34 || header[2] != de.volume {
+			return nil, errors.New("Invalid resource header!")
+		}
 
-	var header = make([]byte, 5)
-	var offset = int64(de.offset)
-	_, err = volFile.ReadAt(header, offset)
-	if err != nil {
-		return nil, err
-	}
-	if header[0] != 0x12 || header[1] != 0x34 || header[2] != de.volume {
-		return nil, errors.New("Invalid resource header!")
-	}
-
-	// second, pull the resource bytes out of the file
-	var reslen = uint32(header[3]) | (uint32(header[4]) << 8)
-	var resource = make([]byte, reslen)
-	_, err = volFile.ReadAt(resource, offset+5)
-	return resource, err
+		// second, pull the resource bytes out of the file
+		var reslen = uint32(header[3]) | (uint32(header[4]) << 8)
+		var resource = make([]byte, reslen)
+		_, err = volFile.ReadAt(resource, offset+5)
+		return resource, err
+	})
 }
 
 // load a version-3 resource as a byte array, raw and unprocessed
@@ -334,45 +347,40 @@ func loadResource_V3(game *Game, de DirEntry) ([]byte, error) {
 		return nil, errors.New("Resource isn't present!")
 	}
 
-	// first, open the file and read the resource header
-	path := filepath.Join(game.RootDir, fmt.Sprintf("%sVOL.%d", game.Prefix, de.volume))
-	volFile, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer volFile.Close()
+	return game.volumes.LockedOperation(int(de.volume), func(volFile *os.File) ([]byte, error) {
+		var err error
+		var header = make([]byte, 7)
+		var offset = int64(de.offset)
+		_, err = volFile.ReadAt(header, offset)
+		if err != nil {
+			return nil, err
+		}
+		if header[0] != 0x12 || header[1] != 0x34 || (header[2]&0x7f) != de.volume {
+			return nil, errors.New("Invalid resource header!")
+		}
 
-	var header = make([]byte, 7)
-	var offset = int64(de.offset)
-	_, err = volFile.ReadAt(header, offset)
-	if err != nil {
-		return nil, err
-	}
-	if header[0] != 0x12 || header[1] != 0x34 || (header[2]&0x7f) != de.volume {
-		return nil, errors.New("Invalid resource header!")
-	}
+		// second, pull the resource bytes out of the file
+		var reslen = uint32(header[3]) | (uint32(header[4]) << 8)
+		var lzwlen = uint32(header[5]) | (uint32(header[6]) << 8)
 
-	// second, pull the resource bytes out of the file
-	var reslen = uint32(header[3]) | (uint32(header[4]) << 8)
-	var lzwlen = uint32(header[5]) | (uint32(header[6]) << 8)
+		var diskBytes = make([]byte, lzwlen)
+		if _, err = volFile.ReadAt(diskBytes, offset+7); err != nil {
+			return nil, err
+		}
 
-	var diskBytes = make([]byte, lzwlen)
-	if _, err = volFile.ReadAt(diskBytes, offset+7); err != nil {
-		return nil, err
-	}
-
-	// we have the resource now... decompress it if necessary...
-	switch {
-	case (header[2] & 0x80) > 0:
-		// TODO... PicCompression
-		return nil, errors.New("TODO: Pic Compression")
-	case lzwlen != reslen:
-		var resource = make([]byte, reslen)
-		var expander = lzw.NewReader(bytes.NewReader(diskBytes), lzw.LSB, 8)
-		_, err = io.ReadFull(expander, resource)
-		expander.Close()
-		return resource, err
-	default:
-		return diskBytes, nil
-	}
+		// we have the resource now... decompress it if necessary...
+		switch {
+		case (header[2] & 0x80) > 0:
+			// TODO... PicCompression
+			return nil, errors.New("TODO: Pic Compression")
+		case lzwlen != reslen:
+			var resource = make([]byte, reslen)
+			var expander = lzw.NewReader(bytes.NewReader(diskBytes), lzw.LSB, 8)
+			_, err = io.ReadFull(expander, resource)
+			expander.Close()
+			return resource, err
+		default:
+			return diskBytes, nil
+		}
+	})
 }

@@ -705,7 +705,7 @@ func newParsedIf(g *agi.Game, src []byte) (*agiParsedIf, error) {
 	thenLen := signedShort(src[:2])
 	src = src[2:]
 	if len(src) < int(thenLen) {
-		fmt.Fprintf(os.Stderr, "SHORTENING THEN section of if/then by %d", int(thenLen)-len(src)) // DEBUG
+		fmt.Fprintf(os.Stderr, "SHORTENING THEN section of if/then by %d\n", int(thenLen)-len(src)) // DEBUG
 		thenLen = int16(len(src))
 	}
 
