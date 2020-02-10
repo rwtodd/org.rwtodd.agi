@@ -16,6 +16,7 @@ func main() {
 	words := flag.Bool("words", false, "Output Words.TOK contents")
 	logic := flag.Bool("logic", false, "Output Logic Scripts")
 	objects := flag.Bool("objects", false, "Output the Object list")
+	orchestra := flag.Bool("orch", false, "Output the example csound orchestra")
 	restrict := flag.Int("n", -1, "Only output this item (-1 for all)")
 	all := flag.Bool("all", false, "Equivalent to /ver/words/logic/objects/n:-1")
 
@@ -30,7 +31,7 @@ func main() {
 	// determine the index loading options based on the flags provided
 	if *all {
 		*ver, *words, *logic, *objects = true, true, true, true
-		//*n = -1
+		*restrict = -1
 	}
 
 	var options agi.GameLoadOption
@@ -47,7 +48,7 @@ func main() {
 
 	game, err := agi.NewGame(rootDir, options)
 	if err != nil {
-		fmt.Println("Error! ", err)
+		fmt.Fprintln(os.Stderr, "Error! ", err)
 		os.Exit(1)
 	}
 	defer game.Close()
@@ -56,11 +57,21 @@ func main() {
 	// start with the output directory
 	err = os.MkdirAll(*od, 0777)
 	if err != nil {
-		fmt.Println("Can't make output dir! ", err)
+		fmt.Fprintln(os.Stderr, "Can't make output dir! ", err)
 		os.Exit(1)
 	}
 
 	var errCount int = 0
+
+	// print the csound orchestra if requested
+	if *orchestra {
+		err := outputOrchestra(*od)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Can't output orchestra: ", err)
+			errCount++
+		}
+	}
+
 	if *ver {
 		if err = outputVersion(game, *od); err != nil {
 			fmt.Fprintln(os.Stderr, "Can't output version: ", err)
