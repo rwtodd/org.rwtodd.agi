@@ -5,6 +5,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -65,14 +66,120 @@ func outputScore(game *agi.Game, odir string, i int) error {
 		fmt.Fprintln(scoBuf, "\n; Set the reverb for 2 seconds longer than the song")
 		fmt.Fprintln(scoBuf, ";   \t\t\t\treverb\tgain\tgain")
 		fmt.Fprintln(scoBuf, "; 99\tstart\tdur\tdepth\tStart\tEnd")
-		fmt.Fprintf(scoBuf, "i 99\t0\t%f\t0.9\t1.0\t1.0\n", duration+12.0)
+		fmt.Fprintf(scoBuf, "i 99\t0\t%0.3f\t0.9\t1.0\t1.0\n", duration+12.0)
 
+		// write each channel..
+		err = outputChannel(scoBuf, "Voice 1", sound.Voice1, 0.5)
+		if err == nil {
+			err = outputChannel(scoBuf, "Voice 2", sound.Voice2, 0.7)
+		}
+		if err == nil {
+			err = outputChannel(scoBuf, "Voice 3", sound.Voice3, 0.3)
+		}
+		if err == nil {
+			err = outputNoise(scoBuf, "Voice 4 (Noise)", sound.Voice4)
+		}
+		if err != nil {
+			// if any of the channels fails, just close up the file and report
+			scoBuf.Flush()
+			scoFile.Close()
+			return err
+		}
+
+		// close up the file
 		if err = scoBuf.Flush(); err != nil {
 			return err
 		}
 		if err = scoFile.Close(); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// convert agi frequencies to real-world frequencies
+func agiFreq(n uint16) float32 {
+	if n == 0 {
+		return 440.0 // just anything...
+	}
+	return 111860.78125 / float32(n)
+}
+
+// convert agi attenuation to csound db
+func agiSoundLevel(lvl uint8) int {
+	if lvl > 14 {
+		return -200
+	}
+	return -20 - 3*int(lvl)
+}
+
+// convert agi durations at 1/60th second to csound at t 360 (1/6th second)
+func agiDuration(dur uint16) float32 {
+	return float32(dur) / 10.0
+}
+
+func outputChannel(buf io.Writer, name string, tones []agi.Tone, pan float32) error {
+	fmt.Fprintln(buf, "\n\n; **** ", name)
+	fmt.Fprintln(buf, "; 1\ttime\tdur\tdb\tfreq\tpan")
+	var time float32 = 0
+	var timeStr = ""
+	var outputPrev = false // have we output the previous note?
+
+	for _, t := range tones {
+		if t.Attenuation < 15 {
+			if outputPrev {
+				timeStr = "+"
+			} else {
+				timeStr = fmt.Sprintf("%.3f", time)
+			}
+			fmt.Fprintf(buf,
+				"i 1\t%s\t%.2f\t%d\t%f\t%.2f\n",
+				timeStr,
+				agiDuration(t.Duration),
+				agiSoundLevel(t.Attenuation),
+				agiFreq(t.Frequency),
+				pan)
+			outputPrev = true
+		} else {
+			outputPrev = false
+		}
+		time += agiDuration(t.Duration)
+	}
+	return nil
+}
+
+func outputNoise(buf io.Writer, name string, noises []agi.Noise) error {
+	fmt.Fprintln(buf, "\n\n; **** ", name)
+	fmt.Fprintln(buf, ";  \ttime\tdur\tdb\tfreq")
+	var time float32 = 0
+	var timeStr = ""
+	var outputPrev = false // have we output the previous note?
+	var typePrev = agi.NoiseType_White
+
+	for _, n := range noises {
+		if n.Attenuation < 15 {
+			if outputPrev && (n.Type == typePrev) {
+				timeStr = "+"
+			} else {
+				timeStr = fmt.Sprintf("%.3f", time)
+			}
+			var inum = 2
+			if n.Type == agi.NoiseType_Linear {
+				inum = 3
+			}
+			fmt.Fprintf(buf,
+				"i %d\t%s\t%.2f\t%d\t%f\n",
+				inum,
+				timeStr,
+				agiDuration(n.Duration),
+				agiSoundLevel(n.Attenuation),
+				agiFreq(uint16(n.Frequency)))
+			outputPrev = true
+			typePrev = n.Type
+		} else {
+			outputPrev = false
+		}
+		time += agiDuration(n.Duration)
 	}
 	return nil
 }
@@ -102,6 +209,8 @@ t 0 360  ; 1/6th second, aligns with AGI timing of 1/60th second
 `
 
 const exampleOrch = `;; vim: tabstop=8: shiftwidth=8: softtabstop=8: noexpandtab:
+;; example use:  csound --wave --output=out.wav agi.orc whatever.sco
+
 sr = 48000
 ksmps = 32
 
