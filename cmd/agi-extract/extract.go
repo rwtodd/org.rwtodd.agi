@@ -16,6 +16,7 @@ func main() {
 	words := flag.Bool("words", false, "Output Words.TOK contents")
 	logic := flag.Bool("logic", false, "Output Logic Scripts")
 	objects := flag.Bool("objects", false, "Output the Object list")
+	sounds := flag.Bool("sounds", false, "Output csound scores for Sound resources")
 	orchestra := flag.Bool("orch", false, "Output the example csound orchestra")
 	restrict := flag.Int("n", -1, "Only output this item (-1 for all)")
 	all := flag.Bool("all", false, "Equivalent to /ver/words/logic/objects/n:-1")
@@ -30,7 +31,7 @@ func main() {
 
 	// determine the index loading options based on the flags provided
 	if *all {
-		*ver, *words, *logic, *objects = true, true, true, true
+		*ver, *words, *logic, *objects, *sounds = true, true, true, true, true
 		*restrict = -1
 	}
 
@@ -44,6 +45,9 @@ func main() {
 	}
 	if *objects {
 		options |= agi.Load_Objects
+	}
+	if *sounds {
+		options |= agi.Load_SndDir
 	}
 
 	game, err := agi.NewGame(rootDir, options)
@@ -108,6 +112,24 @@ func main() {
 				err := outputLogic(game, *od, logIndex)
 				if err != nil {
 					err = fmt.Errorf("Can't output logic %d (%v): %v\n", logIndex, game.LogicDir[logIndex], err)
+				}
+				return err
+			})
+		}
+		errCount += reportNErrors(max - min)
+	}
+
+	if *sounds {
+		min, max := 0, len(game.SoundDir)
+		if *restrict >= 0 {
+			min, max = *restrict, *restrict+1
+		}
+		for i := min; i < max; i++ {
+			sndIndex := i
+			go concurrentTask(func() error {
+				err := outputScore(game, *od, sndIndex)
+				if err != nil {
+					err = fmt.Errorf("Can't output sound %d (%v): %v\n", sndIndex, game.SoundDir[sndIndex], err)
 				}
 				return err
 			})

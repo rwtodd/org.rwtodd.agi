@@ -3,10 +3,82 @@ package main
 // routines for csound orchestra / score generation
 
 import (
+	"bufio"
+	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/rwtodd/agi-tools/agi"
 )
 
+// calculates the sound length in sixths of a second. Note
+// that AGI data is in 60ths of a second so we have to convert.
+func soundLength(s *agi.Sound) float32 {
+	var dur, max uint32
+	for _, voice := range [...][]agi.Tone{s.Voice1, s.Voice2, s.Voice3} {
+		dur = 0
+		for _, t := range voice {
+			dur += uint32(t.Duration)
+		}
+		if dur > max {
+			max = dur
+		}
+	}
+	dur = 0
+	for _, n := range s.Voice4 {
+		dur += uint32(n.Duration)
+	}
+	if dur > max {
+		max = dur
+	}
+
+	return float32(max) / 10.0
+}
+
+func outputScore(game *agi.Game, odir string, i int) error {
+	if i < 0 || i >= len(game.SoundDir) {
+		return fmt.Errorf("Sound %d is out of range!", i)
+	}
+
+	entry := game.SoundDir[i]
+	if entry.IsPresent() {
+		sound, err := game.LoadSound(i)
+		if err != nil {
+			return fmt.Errorf("Sound %d ERROR: %v", i, err)
+		}
+		path := filepath.Join(odir, fmt.Sprintf("sound_%03d.sco", i))
+		scoFile, err := os.Create(path)
+		if err != nil {
+			return err
+		}
+		scoBuf := bufio.NewWriter(scoFile)
+
+		// calculate needed stats
+		duration := soundLength(sound)
+
+		// write the prelude
+		fmt.Fprintf(scoBuf, "; This is '%s', sound resource #%d of length %f\n\n",
+			filepath.Base(game.RootDir), i, duration)
+		fmt.Fprintln(scoBuf, scorePrelude)
+
+		// write the reverb..
+		fmt.Fprintln(scoBuf, "\n; Set the reverb for 2 seconds longer than the song")
+		fmt.Fprintln(scoBuf, ";   \t\t\t\treverb\tgain\tgain")
+		fmt.Fprintln(scoBuf, "; 99\tstart\tdur\tdepth\tStart\tEnd")
+		fmt.Fprintf(scoBuf, "i 99\t0\t%f\t0.9\t1.0\t1.0\n", duration+12.0)
+
+		if err = scoBuf.Flush(); err != nil {
+			return err
+		}
+		if err = scoFile.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// write the canned example orchestra to disk.  This way we can always
+// have an easy starting point.
 func outputOrchestra(odir string) error {
 	path := filepath.Join(odir, "agi.orc")
 	ofile, err := os.Create(path)
@@ -19,6 +91,15 @@ func outputOrchestra(odir string) error {
 	}
 	return nil
 }
+
+const scorePrelude = `; orchestra is expected to have equivalents for
+; PCJr/Tandy 3-voice sounds:
+; Instrument 1 for the main voice (square wave)
+; Instrument 2 for white noise
+; Instrument 3 for 'linear noise'
+; Instrument 99 for mixing/reverb
+t 0 360  ; 1/6th second, aligns with AGI timing of 1/60th second
+`
 
 const exampleOrch = `;; vim: tabstop=8: shiftwidth=8: softtabstop=8: noexpandtab:
 sr = 48000

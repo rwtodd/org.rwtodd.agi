@@ -29,13 +29,26 @@ type Noise struct {
 	Type        NoiseType
 }
 
+func checkChannelLength(src []byte) error {
+	var slen = len(src)
+	var remainder = slen % 5
+	// either the length must be a multiple of 5, or
+	// it must be longer by exactly two 0xff bytes
+	var lenOK = (remainder == 0) ||
+		(remainder == 2 && src[slen-2] == 0xff && src[slen-1] == 0xff)
+	if !lenOK {
+		return fmt.Errorf("Sound channel has a bad length %d!", slen)
+	}
+	return nil
+}
+
 func parseTones(src []byte) ([]Tone, error) {
-	if len(src)%5 != 0 {
-		return nil, fmt.Errorf("Tone channel has length %d but should be a multiple of 5!", len(src))
+	if lenErr := checkChannelLength(src); lenErr != nil {
+		return nil, lenErr
 	}
 
 	var result = make([]Tone, 0, len(src)/5)
-	for len(src) > 0 {
+	for len(src) > 2 {
 		curTone := Tone{
 			Frequency:   (uint16(src[2]&0x3f) << 4) | uint16(src[3]&0x0f),
 			Duration:    uint16(src[0]) | (uint16(src[1]) << 8),
@@ -52,12 +65,12 @@ func parseTones(src []byte) ([]Tone, error) {
 var noiseFreqs = [4]uint8{0x10, 0x20, 0x40, 0}
 
 func parseNoises(src []byte) ([]Noise, error) {
-	if len(src)%5 != 0 {
-		return nil, fmt.Errorf("Noise channel has length %d but should be a multiple of 5!", len(src))
+	if lenErr := checkChannelLength(src); lenErr != nil {
+		return nil, lenErr
 	}
 
 	var result = make([]Noise, 0, len(src)/5)
-	for len(src) > 0 {
+	for len(src) > 2 {
 		var nt NoiseType
 		if src[3]&0x04 == 0 {
 			nt = NoiseType_Linear
