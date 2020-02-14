@@ -8,8 +8,6 @@
 ; Instrument 99 for mixing/reverb
 t 0 360  ; 1/6th second, aligns with AGI timing of 1/60th second
 
-a 0 1 50
-
 ; Set the reverb for 1 second longer than the song
 ;   				reverb	gain	gain
 ; 99	start	dur	depth	Start	End
