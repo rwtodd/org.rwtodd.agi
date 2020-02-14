@@ -63,10 +63,10 @@ func outputScore(game *agi.Game, odir string, i int) error {
 		fmt.Fprintln(scoBuf, scorePrelude)
 
 		// write the reverb..
-		fmt.Fprintln(scoBuf, "\n; Set the reverb for 2 seconds longer than the song")
+		fmt.Fprintln(scoBuf, "\n; Set the reverb for 1 second longer than the song")
 		fmt.Fprintln(scoBuf, ";   \t\t\t\treverb\tgain\tgain")
 		fmt.Fprintln(scoBuf, "; 99\tstart\tdur\tdepth\tStart\tEnd")
-		fmt.Fprintf(scoBuf, "i 99\t0\t%0.3f\t0.9\t1.0\t1.0\n", duration+12.0)
+		fmt.Fprintf(scoBuf, "i 99\t0\t%0.3f\t0.9\t1.0\t1.0\n", duration+6.0)
 
 		// write each channel..
 		err = outputChannel(scoBuf, "Voice 1", sound.Voice1, 0.5)
