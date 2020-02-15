@@ -124,6 +124,8 @@ func outputChannel(buf io.Writer, name string, tones []agi.Tone, pan float32) er
 	var time float32 = 0
 	var timeStr = ""
 	var outputPrev = false // have we output the previous note?
+	var panStr = fmt.Sprintf("%.2f", pan)
+	var lastFreq float32 = -9999
 
 	for _, t := range tones {
 		if t.Attenuation < 15 {
@@ -132,14 +134,21 @@ func outputChannel(buf io.Writer, name string, tones []agi.Tone, pan float32) er
 			} else {
 				timeStr = fmt.Sprintf("%.3f", time)
 			}
+			var curFreq = agiFreq(t.Frequency)
+			var freqStr = "."
+			if curFreq != lastFreq {
+				freqStr = fmt.Sprintf("%f", curFreq)
+			}
 			fmt.Fprintf(buf,
-				"i 1\t%s\t%.2f\t%d\t%f\t%.2f\n",
+				"i 1\t%s\t%.2f\t%d\t%s\t%s\n",
 				timeStr,
 				agiDuration(t.Duration),
 				agiSoundLevel(t.Attenuation),
-				agiFreq(t.Frequency),
-				pan)
+				freqStr,
+				panStr)
 			outputPrev = true
+			lastFreq = curFreq
+			panStr = "."
 		} else {
 			outputPrev = false
 		}
@@ -155,6 +164,7 @@ func outputNoise(buf io.Writer, name string, noises []agi.Noise) error {
 	var timeStr = ""
 	var outputPrev = false // have we output the previous note?
 	var typePrev = agi.NoiseType_White
+	var lastFreq float32 = -9999
 
 	for _, n := range noises {
 		if n.Attenuation < 15 {
@@ -167,15 +177,21 @@ func outputNoise(buf io.Writer, name string, noises []agi.Noise) error {
 			if n.Type == agi.NoiseType_Linear {
 				inum = 3
 			}
+			var curFreq = agiFreq(uint16(n.Frequency))
+			var freqStr = "."
+			if curFreq != lastFreq {
+				freqStr = fmt.Sprintf("%f", curFreq)
+			}
 			fmt.Fprintf(buf,
-				"i %d\t%s\t%.2f\t%d\t%f\n",
+				"i %d\t%s\t%.2f\t%d\t%s\n",
 				inum,
 				timeStr,
 				agiDuration(n.Duration),
 				agiSoundLevel(n.Attenuation),
-				agiFreq(uint16(n.Frequency)))
+				freqStr)
 			outputPrev = true
 			typePrev = n.Type
+			lastFreq = curFreq
 		} else {
 			outputPrev = false
 		}
