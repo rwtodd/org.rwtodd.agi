@@ -52,7 +52,7 @@ func (vf volumeFiles) Close() error {
 
 func (vf volumeFiles) LockedOperation(vol int, op func(*os.File) ([]byte, error)) ([]byte, error) {
 	if vol >= len(vf) {
-		return nil, fmt.Errorf("No such volume, number %d! (max was %d)", vol, len(vf))
+		return nil, fmt.Errorf("No such AGI volume, number %d! (max was %d)", vol, len(vf))
 	}
 	sf := &vf[vol]
 	sf.mutex.Lock()

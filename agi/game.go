@@ -198,7 +198,7 @@ func NewGame(rootDir string, options GameLoadOption) (*Game, error) {
 				return nil, err
 			}
 
-			game.volumes = newVolumeFiles(5,
+			game.volumes = newVolumeFiles(13,
 				func(i int) string {
 					return filepath.Join(rootDir, fmt.Sprintf("%sVOL.%d", game.Prefix, i))
 				})
