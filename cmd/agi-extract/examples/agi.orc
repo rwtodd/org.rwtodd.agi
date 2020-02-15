@@ -31,7 +31,6 @@ iampl	=	ampdbfs(p4-$DAMPEN.)
 kenv	oscili	1, 0.125, gienv
 klfo	=	oscil:k(0.2,0.5,-1,random:i(0.75,1.0))+0.5
 asq	vco2	iampl, p5, 2, klfo
-;; asq	vco2	iampl, p5, 10
 aenv	=	asq*kenv
 aoL, aoR pan2	aenv, p6, 0
 gaLeft	+=	aoL
