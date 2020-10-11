@@ -1,0 +1,3 @@
+rootProject.name = 'org.rwtodd.agi'
+include 'agi-resources', 'agi-extractor'
+

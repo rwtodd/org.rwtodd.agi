@@ -1,0 +1,18 @@
+plugins {
+   id 'java'
+   id 'application'
+}
+
+dependencies {
+    // Use JUnit Jupiter API for testing.
+    // testImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.2'
+    implementation 'org.rwtodd.args:org.rwtodd.args:1.0'
+    implementation project(':agi-resources')
+}
+
+application {
+    // Define the main class for the application.
+    mainModule = 'org.rwtodd.agi.extractor'
+    mainClassName = 'org.rwtodd.agi.extractor.Cmd'
+    applicationDefaultJvmArgs = ['-Dswing.metalTheme=steel']
+}
