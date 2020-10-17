@@ -27,6 +27,9 @@ giPan2		init	0.7
 giPan3		init	0.3
 
 instr   1     ;; load program (no-op for this orchestra)
+inoop = p4
+inoop2 = p5
+inoop3 = p6
 endin
 
 instr   2     ;; set panning

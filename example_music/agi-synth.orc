@@ -21,7 +21,8 @@ gaRight 	init	0.0
 ;; load up the "FatBoy" soundfont into the fluidEngine
 ;; (it's at https://fatboy.site/)
 giengine fluidEngine
-gisfnum	 fluidLoad "H:\\OneDrive\\WATMM\\SoundFonts\\FatBoy-v0.786.sf2", giengine, 1
+gisfnum	 fluidLoad "H:\\OneDrive\\WATMM\\SoundFonts\\FatBoy-v0.786.sf2", giengine ;; , 1
+;;gisfnum	 fluidLoad "H:\\OneDrive\\WATMM\\SoundFonts\\FluidR3_GM.sf2", giengine ;; , 1 
 
 instr 1       ;; set program
 ;; i1  p2  p3 [1-3] [bank] [patch]
@@ -35,21 +36,9 @@ instr   2     ;; set panning, rounding
 ; i2	p2    p3     [1-3] pan
 iWhich  = p4
 iPanVal = int(p5*128)
-if (iWhich == 1) igoto firstSq
-if (iWhich == 2) igoto secondSq
-if (iWhich == 3) igoto thirdSq
-if (iWhich == 4) igoto roundingSet
+if (iWhich == 4) igoto roundingSet ;; the rounding code
+   fluidCCi giengine, iWhich, 10, iPanVal
 goto after
-
-firstSq:
-   fluidControl giengine, 176, 1, 10, iPanVal
-   goto after
-secondSq:
-   fluidControl giengine, 176, 2, 10, iPanVal
-   goto after
-thirdSq:
-   fluidControl giengine, 176, 3, 10, iPanVal
-   goto after
 roundingSet:
    giRounding = p5
 after:

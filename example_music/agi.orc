@@ -16,30 +16,19 @@ gaLeft		init	0.0
 gaRight 	init	0.0
 
 giPan1		init	0.5
-giPan2		init	0.7
-giPan3		init	0.3
+giPan2		init	0.5
+giPan3		init	0.5
 
 instr   1     ;; load program (no-op for this orchestra)
+inoop = p4
+inoop2 = p5
+inoop3 = p6
 endin
 
 instr   2     ;; set panning
 ; i1	p2    p3     [1-3] pan
 iWhich  = p4
 iPanVal = p5
-if (iWhich == 1) igoto firstSq
-if (iWhich == 2) igoto secondSq
-if (iWhich == 3) igoto thirdSq
-goto after
-
-firstSq:
-   giPan1 = iPanVal
-   igoto after
-secondSq:
-   giPan2 = iPanVal
-   igoto after
-thirdSq:
-   giPan3 = iPanVal
-after:
 endin
 
 instr	11    ;; square wave 1

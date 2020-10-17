@@ -1,4 +1,4 @@
-; This is '.', sound resource #23 of length 288.600006
+; This is '.', sound resource #22 of length 198.4
 
 ; orchestra is expected to have equivalents for
 ; PCJr/Tandy 3-voice sounds:
