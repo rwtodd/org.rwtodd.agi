@@ -31,7 +31,8 @@ iWhich  = p4
 iPanVal = p5
 if (iWhich == 1) igoto firstSq
 if (iWhich == 2) igoto secondSq
-igoto thirdSq
+if (iWhich == 3) igoto thirdSq
+goto after
 
 firstSq:
    giPan1 = iPanVal

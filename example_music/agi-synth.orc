@@ -11,6 +11,8 @@ nchnls = 2
 
 #define DAMPEN #0.0#
 
+;; should we round the midi notes to nearest int?
+giRounding      init    0   
 
 ;; noise wave...16 units long: 1 0 0 0  0 0 0 0  0 0 0 0  0 0 0 0
 ginzw	ftgen	0, 0, 16, -7, 1, 1, 1, 0, 0, 15, 0
@@ -23,19 +25,28 @@ gisfnum	 fluidLoad "H:\\OneDrive\\WATMM\\SoundFonts\\FatBoy-v0.786.sf2", giengin
 
 instr 1       ;; set program
 ;; i1  p2  p3 [1-3] [bank] [patch]
+;;  Common Favorites...
+;;     0 0    Acoustic Piano
+;;     0 4    Rhodes Piano
+;;     0 7    Clavinet
+;;     0 24   Nylon Guitar
+;;     0 48   Strings
+;;     0 87   Bass+Lead
+;;     0 90   Polysynth
    ich = p4
    ibk = p5
    ipt = p6
    fluidProgramSelect giengine, ich, gisfnum, ibk, ipt
 endin
 
-instr   2     ;; set panning
+instr   2     ;; set panning, rounding
 ; i2	p2    p3     [1-3] pan
 iWhich  = p4
 iPanVal = int(p5*128)
 if (iWhich == 1) igoto firstSq
 if (iWhich == 2) igoto secondSq
 if (iWhich == 3) igoto thirdSq
+if (iWhich == 4) igoto roundingSet
 goto after
 
 firstSq:
@@ -46,6 +57,9 @@ secondSq:
    goto after
 thirdSq:
    fluidControl giengine, 176, 3, 10, iPanVal
+   goto after
+roundingSet:
+   giRounding = p5
 after:
 endin
 
@@ -53,28 +67,31 @@ instr	11    ;; square wave 1
 ; i11	p2	p3	p4	p5
 ;	start	dur	ampl	pitch
 ; iampl   = int(1000*ampdbfs(p4-$DAMPEN.))
-iampl   = (((p4 - $DAMPEN.)+20)*2)+100
-imidi   ftom p5
+iampl   = int((((p4 - $DAMPEN.)+20)*2))+100
+if (iampl < 0) goto after
+imidi   ftom p5,giRounding
 fluidNote giengine, 1, imidi, iampl
+after:
 endin
 
 instr	12    ;; square wave 2
 ; i11	p2	p3	p4	p5
 ;	start	dur	ampl	pitch
-;iampl   = int(1000*ampdbfs(p4-$DAMPEN.))
-iampl   = (((p4 - $DAMPEN.)+20)*2)+100
-print iampl
-imidi   ftom p5
+iampl   = int((((p4 - $DAMPEN.)+20)*2))+100
+if (iampl < 0) goto after
+imidi   ftom p5,giRounding
 fluidNote giengine, 2, imidi, iampl
+after:
 endin
 
 instr	13    ;; square wave 3
 ; i11	p2	p3	p4	p5
 ;	start	dur	ampl	pitch
-;iampl   = int(1000*ampdbfs(p4-$DAMPEN.))
-iampl   = (((p4 - $DAMPEN.)+20)*2)+100
-imidi   ftom p5
+iampl   = int((((p4 - $DAMPEN.)+20)*2))+100
+if (iampl < 0) goto after
+imidi   ftom p5,giRounding
 fluidNote giengine, 3, imidi, iampl
+after:
 endin
 
 instr 21 ;; "white" noise
@@ -106,8 +123,8 @@ endin
 instr	99 ;; out-mixer
 ;; i99 p2=start p3=dur p4=reverb time p5=volstart p6=volend
 afsLeft, afsRight fluidOut giengine
-gaLeft += afsLeft
-gaRight += afsRight
+gaLeft += (3*afsLeft)
+gaRight += (3*afsRight)
 aoL	reverb	gaLeft, p4
 aoR	reverb	gaRight, p4
 kslope init p5
