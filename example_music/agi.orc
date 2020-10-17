@@ -1,11 +1,8 @@
 sr = 48000
 ksmps = 32
 
-;sr = 44100
-;ksmps = 20
-
 nchnls = 2
-; 0dbfs = 1
+0dbfs = 1
 
 #define DAMPEN #0.0#
 
@@ -112,13 +109,11 @@ endin
 
 instr	99 ;; out-mixer
 ;; i99 p2=start p3=dur p4=reverb time p5=volstart p6=volend
-aoL	reverb	gaLeft, p4
-aoR	reverb	gaRight, p4
 kslope init p5
 if p5 != p6 then
 	kslope	expon	p5, p3, p6
 endif
-	outs	(gaLeft+(aoL*0.15))*kslope, (gaRight+(aoR*0.15))*kslope
+	outs gaLeft*kslope, gaRight*kslope
 gaLeft	=	0
 gaRight	=	0
 endin

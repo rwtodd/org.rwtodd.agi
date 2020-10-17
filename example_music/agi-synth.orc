@@ -3,9 +3,6 @@
 sr = 48000
 ksmps = 32
 
-;sr = 44100
-;ksmps = 20
-
 nchnls = 2
 0dbfs = 1
 
@@ -20,19 +17,14 @@ ginzw	ftgen	0, 0, 16, -7, 1, 1, 1, 0, 0, 15, 0
 gaLeft		init	0.0
 gaRight 	init	0.0
 
+
+;; load up the "FatBoy" soundfont into the fluidEngine
+;; (it's at https://fatboy.site/)
 giengine fluidEngine
 gisfnum	 fluidLoad "H:\\OneDrive\\WATMM\\SoundFonts\\FatBoy-v0.786.sf2", giengine, 1
 
 instr 1       ;; set program
 ;; i1  p2  p3 [1-3] [bank] [patch]
-;;  Common Favorites...
-;;     0 0    Acoustic Piano
-;;     0 4    Rhodes Piano
-;;     0 7    Clavinet
-;;     0 24   Nylon Guitar
-;;     0 48   Strings
-;;     0 87   Bass+Lead
-;;     0 90   Polysynth
    ich = p4
    ibk = p5
    ipt = p6

@@ -1,15 +1,15 @@
-; This, to me, sounds nicer than the more authentic plain square waves.  There is a little
-; bit of pulse-width modulation to keep the sustained notes sounding slightly more interesting.
-; I think it still maintains enough 'plain' to have authentic charm, as opposed to converting the
-; scores to midi and having a harpsichord play them or something.
+; This, to me, sounds nicer than the more authentic plain square waves.
+; There is a little bit of pulse-width modulation to keep the sustained
+; notes sounding slightly more interesting.
+;
+; I think it still maintains enough 'plain' to have authentic charm, as
+; opposed to using MIDI/soundfonts.
+;
 sr = 48000
 ksmps = 32
 
-;sr = 44100
-;ksmps = 20
-
 nchnls = 2
-; 0dbfs = 1
+0dbfs = 1
 
 #define DAMPEN #0.0#
 
