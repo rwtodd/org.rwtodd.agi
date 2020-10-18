@@ -1,5 +1,6 @@
 package org.rwtodd.agi.extractor;
 
+import org.rwtodd.agi.resources.AGIException;
 import org.rwtodd.agi.resources.Game;
 import org.rwtodd.args.*;
 
@@ -16,9 +17,7 @@ public class Cmd {
             var parser = new Parser(efp,new HelpParam());
             parser.parse(args);
             if(efp.getValue() == null) parser.requestHelp();
-            
-            var x = new Game(efp.getValue().toString());
-            System.out.println("Hello!");
+            var x = new Game(efp.getValue());
         } catch (CommandLineException cle) {
             if (!cle.helpWasRequested()) {
                 System.err.println(cle.getMessage());
@@ -27,6 +26,8 @@ public class Cmd {
                 cle.addHelpText(System.err);
             }
             System.exit(1);
+        } catch (AGIException agi) {
+            System.err.println("Error! " + agi.getMessage());
         }
     }
 }
