@@ -17,6 +17,10 @@ public class Game {
         System.out.println("Game is version " + version.toString());
         if(version.isV3()) System.out.println("Game prefix is: " + version.getPrefix());
         directory = ResourceDirectory.create(gamePath, version);
+        System.out.printf("There are %d logics.\n", directory.getLogicCount());
+        System.out.printf("There are %d pics.\n", directory.getPicCount());
+        System.out.printf("There are %d views.\n", directory.getViewCount());
+        System.out.printf("There are %d sounds.\n", directory.getSoundCount());
     }
     
     public Game(final String pathString) throws AGIException {
