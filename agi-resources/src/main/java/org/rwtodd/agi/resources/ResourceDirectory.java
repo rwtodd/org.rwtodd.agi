@@ -17,24 +17,6 @@ import java.nio.file.Path;
 public interface ResourceDirectory {
 
     /**
-     * A factory method for ResourceDirectories, creating an implementation
-     * appropriate for the provided EngineVersion.
-     *
-     * @param gamePath the path to the game's files
-     * @param version the engine version used by the game
-     * @return a suitable ResourceDirectory.
-     * @throws AGIException when there is a problem creating the directory
-     */
-    static ResourceDirectory create(final Path gamePath, final EngineVersion version)
-            throws AGIException {
-        if (version.isBeforeV3()) {
-            return new V2ResourceDirectory(gamePath);
-        } else {
-            return new V3ResourceDirectory(gamePath, version);
-        }
-    }
-
-    /**
      * Locate the sound resource identified by `number`, or return
      * DirEntry.NON_EXISTENT.
      *
@@ -102,11 +84,9 @@ public interface ResourceDirectory {
 
 class V2ResourceDirectory implements ResourceDirectory {
 
-    private final Path gamePath;
     private final byte[] sounds, views, pics, logics;
 
-    V2ResourceDirectory(final Path _gamePath) throws AGIException {
-        gamePath = _gamePath;
+    V2ResourceDirectory(final Path gamePath) throws AGIException {
         try {
             sounds = Files.readAllBytes(gamePath.resolve("SNDDIR"));
             views = Files.readAllBytes(gamePath.resolve("VIEWDIR"));
@@ -179,17 +159,15 @@ class V2ResourceDirectory implements ResourceDirectory {
 
 class V3ResourceDirectory implements ResourceDirectory {
 
-    private final Path gamePath;
     private final byte[] dir;
     private final int logicOffs; // where the logic resources start
     private final int viewOffs;  // where the view resources start
     private final int picOffs;   // where the pic resources start
     private final int soundOffs; // where the sound resources start
 
-    V3ResourceDirectory(final Path _gamePath, final EngineVersion version) throws AGIException {
-        gamePath = _gamePath;
+    V3ResourceDirectory(final Path gamePath, final String prefix) throws AGIException {
         try {
-            dir = Files.readAllBytes(gamePath.resolve(version.getPrefix()+"DIR"));
+            dir = Files.readAllBytes(gamePath.resolve(prefix+"DIR"));
             logicOffs = (dir[0]&0xff) | ((dir[1]&0xff) << 8);
             viewOffs  = (dir[2]&0xff) | ((dir[3]&0xff) << 8);
             picOffs   = (dir[4]&0xff) | ((dir[5]&0xff) << 8);

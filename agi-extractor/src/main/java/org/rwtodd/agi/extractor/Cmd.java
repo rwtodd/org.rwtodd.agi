@@ -1,7 +1,8 @@
 package org.rwtodd.agi.extractor;
 
 import org.rwtodd.agi.resources.AGIException;
-import org.rwtodd.agi.resources.Game;
+import org.rwtodd.agi.resources.DefaultResourceLoaders;
+import org.rwtodd.agi.resources.Engine;
 import org.rwtodd.args.*;
 
 /**
@@ -14,10 +15,19 @@ public class Cmd {
     public static void main(String[] args) {
         try {
             var efp = new ExistingFileParam("dir", 'd', "directory", "Which directory to be in.");
-            var parser = new Parser(efp,new HelpParam());
+            var parser = new Parser(efp, new HelpParam());
             parser.parse(args);
-            if(efp.getValue() == null) parser.requestHelp();
-            var x = new Game(efp.getValue());
+            if (efp.getValue() == null) {
+                parser.requestHelp();
+            }
+            final var rlf = new DefaultResourceLoaders();
+            final var engine = new Engine(efp.getValue(),rlf);
+            final var directory = engine.getResourceDirectory();
+            System.out.println(engine);
+            System.out.printf("There are %d logics.\n", directory.getLogicCount());
+            System.out.printf("There are %d pics.\n", directory.getPicCount());
+            System.out.printf("There are %d views.\n", directory.getViewCount());
+            System.out.printf("There are %d sounds.\n", directory.getSoundCount());
         } catch (CommandLineException cle) {
             if (!cle.helpWasRequested()) {
                 System.err.println(cle.getMessage());

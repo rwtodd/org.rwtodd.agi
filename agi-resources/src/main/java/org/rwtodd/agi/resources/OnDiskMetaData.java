@@ -1,81 +1,38 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
 package org.rwtodd.agi.resources;
 
-import java.nio.file.Path;
-import java.nio.file.Files;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 /**
- * Determine the AGI Engine version of a game, and answer questions about it.
- * The DIR/VOL prefixes are considered aspects of the EngineVersion.
- *
+ * Extracts metadata from the disk files of the game.
  * @author rwtodd
  */
-public class EngineVersion {
+public class OnDiskMetaData implements GameMetaData {
 
-    private final double numericVersion;
-    private final String strVersion;
-    private final String gamePrefix;
+    private final String versionString;
+    private final String prefixString;
 
-    /**
-     * Create an EngineVersion for the game rooted at gamePath.
-     *
-     * @param gamePath the root directory of the game
-     * @throws AGIException if the version number cannot be determined.
-     */
-    public EngineVersion(Path gamePath) throws AGIException {
-        strVersion = EngineVersion.extractVersion(gamePath);
-
-        // convert the string version to a number
-        try {
-            String looksLikeDouble = strVersion;
-            if (strVersion.length() > 5) {
-                looksLikeDouble = strVersion.substring(0, 5) + strVersion.substring(6);
-            }
-            numericVersion = Double.valueOf(looksLikeDouble);
-        } catch (NumberFormatException nfe) {
-            throw new AGIException("Somehow extracted a bad version #" + strVersion, nfe);
-        }
-
-        // extract the game prefix, if needed...
-        gamePrefix = (numericVersion > 2.9999)
-                ? EngineVersion.determinePrefix(gamePath)
+    public OnDiskMetaData(Path gamePath) throws AGIException {
+        versionString = OnDiskMetaData.extractVersion(gamePath);
+        prefixString = (versionString.charAt(0) == '3')
+                ? OnDiskMetaData.determinePrefix(gamePath)
                 : null;
     }
 
     @Override
-    public String toString() {
-        return strVersion;
+    public String getVersionString() {
+        return versionString;
     }
 
-    /**
-     * Get the prefix used by this game engine for VOL/DIR files.
-     *
-     * @return the prefix
-     * @throws IllegalStateException when the game doesn't have a prefix.
-     */
-    public String getPrefix() throws IllegalStateException {
-        if (gamePrefix == null) {
-            throw new IllegalStateException("Game prefix is only for V3+ games!");
-        }
-        return gamePrefix;
-    }
-
-    /**
-     * Determine if this is a version 3+ game
-     *
-     * @return true for yes, false for no
-     */
-    public boolean isV3() {
-        return numericVersion > 2.9999;
-    }
-
-    /**
-     * Determine if this is a version 1 or 2 game.
-     *
-     * @return true for yes, false for no.
-     */
-    public boolean isBeforeV3() {
-        return numericVersion < 3.0;
+    @Override
+    public String getPrefix() {
+        return prefixString;
     }
 
     /**
@@ -138,18 +95,21 @@ public class EngineVersion {
      */
     private static String determinePrefix(final Path gamePath) throws AGIException {
         try (final var matches = Files.newDirectoryStream(gamePath, "*VOL.0")) {
-            for(final var match : matches) {
-                if(!Files.isReadable(match)) continue;
+            for (final var match : matches) {
+                if (!Files.isReadable(match)) {
+                    continue;
+                }
                 final var vol0 = match.getFileName().toString();
-                final var pfx = vol0.substring(0, vol0.length()-5);
+                final var pfx = vol0.substring(0, vol0.length() - 5);
                 // now, check if pfx+"DIR" also exists...
-                if(Files.isReadable(match.resolveSibling(pfx+"DIR"))) {
+                if (Files.isReadable(match.resolveSibling(pfx + "DIR"))) {
                     return pfx;
                 }
             }
             throw new AGIException("Could not find <pfx>DIR and <pfx>VOL.0 files (uppercase) to get game prefix!");
-        } catch(Throwable tr) {
-            throw new AGIException("Error while finding V3 game prefix!",tr);
+        } catch (Throwable tr) {
+            throw new AGIException("Error while finding V3 game prefix!", tr);
         }
     }
+
 }
