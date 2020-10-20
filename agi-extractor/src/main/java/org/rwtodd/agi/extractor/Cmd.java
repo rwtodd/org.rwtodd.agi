@@ -33,10 +33,10 @@ public class Cmd {
                 if (metadata.isV3()) {
                     System.out.printf("The game preix is %s\n", metadata.getPrefix());
                 }
-                System.out.printf("There are %d logics.\n", resdir.getLogicCount());
-                System.out.printf("There are %d pics.\n", resdir.getPicCount());
-                System.out.printf("There are %d views.\n", resdir.getViewCount());
-                System.out.printf("There are %d sounds.\n", resdir.getSoundCount());
+                System.out.printf("There are %d logics.\n", resloader.getLogicCount());
+                System.out.printf("There are %d pics.\n", resloader.getPicCount());
+                System.out.printf("There are %d views.\n", resloader.getViewCount());
+                System.out.printf("There are %d sounds.\n", resloader.getSoundCount());
 
                 // now dump all the sounds...
                 for (int i = 0; i < resloader.getSoundCount(); ++i) {
@@ -45,6 +45,8 @@ public class Cmd {
                         resloader.loadSound(i);
                     } catch (ResourceNotPresentException rnp) {
                         System.out.println("Sound " + i + " isn't in the resources.");
+                    } catch (AGIException ae) {
+                        System.err.println("ERROR: " + ae);
                     }
                 }
             }

@@ -17,11 +17,7 @@ public interface ResourceLoader extends Closeable {
 
     static ResourceLoader createDefault(GameMetaData meta, ResourceDirectory resdir, VolumeManager volmgr)
             throws AGIException {
-        if (meta.isBeforeV3()) {
-            return new V2ResourceLoader(resdir, volmgr);
-        } else {
-            throw new UnsupportedOperationException("TODO!");
-        }
+        return new AGIResourceLoader(meta.getVersion(), resdir, volmgr);
     }
 
     static ResourceLoader createDefault(GameMetaData meta) throws AGIException {
@@ -31,10 +27,13 @@ public interface ResourceLoader extends Closeable {
                 VolumeManager.createDefault(meta));
     }
 
-    int  getSoundCount();
-    int  getPicCount();
-    int  getViewCount();
-    int  getLogicCount();
-    
+    int getSoundCount();
+
+    int getPicCount();
+
+    int getViewCount();
+
+    int getLogicCount();
+
     void loadSound(int number) throws AGIException, ResourceNotPresentException;
 }

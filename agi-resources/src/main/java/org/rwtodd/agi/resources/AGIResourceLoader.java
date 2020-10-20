@@ -10,15 +10,17 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * A resource loader for V2 AGI games.
+ * A resource loader for all AGI games.
  * @author rwtodd
  */
-public class V2ResourceLoader implements ResourceLoader {
+public class AGIResourceLoader implements ResourceLoader {
 
     private final VolumeManager vmgr;
     private final ResourceDirectory rdir;
+    private final double version;
 
-    public V2ResourceLoader(ResourceDirectory rd, VolumeManager vm) throws AGIException {
+    public AGIResourceLoader(double version, ResourceDirectory rd, VolumeManager vm) throws AGIException {
+        this.version = version;
         rdir = rd;
         vmgr = vm;
     }
