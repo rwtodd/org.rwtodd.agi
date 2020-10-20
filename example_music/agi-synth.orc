@@ -6,8 +6,6 @@ ksmps = 32
 nchnls = 2
 0dbfs = 1
 
-#define DAMPEN #0.0#
-
 ;; should we round the midi notes to nearest int?
 giRounding      init    0   
 
@@ -47,40 +45,37 @@ endin
 instr	11    ;; square wave 1
 ; i11	p2	p3	p4	p5
 ;	start	dur	ampl	pitch
-; iampl   = int(1000*ampdbfs(p4-$DAMPEN.))
-iampl   = int((((p4 - $DAMPEN.)+20)*2))+100
-if (iampl < 0) goto after
-imidi   ftom p5,giRounding
-fluidNote giengine, 1, imidi, iampl
-after:
+iveloc  = 100 - (6*p4)
+ifreq   = 111860.78125 / p5
+imidi   ftom ifreq,giRounding
+fluidNote giengine, 1, imidi, iveloc
 endin
 
 instr	12    ;; square wave 2
-; i11	p2	p3	p4	p5
+; i12	p2	p3	p4	p5
 ;	start	dur	ampl	pitch
-iampl   = int((((p4 - $DAMPEN.)+20)*2))+100
-if (iampl < 0) goto after
-imidi   ftom p5,giRounding
-fluidNote giengine, 2, imidi, iampl
-after:
+iveloc  = 100 - (6*p4)
+ifreq   = 111860.78125 / p5
+imidi   ftom ifreq,giRounding
+fluidNote giengine, 2, imidi, iveloc
 endin
 
 instr	13    ;; square wave 3
 ; i11	p2	p3	p4	p5
 ;	start	dur	ampl	pitch
-iampl   = int((((p4 - $DAMPEN.)+20)*2))+100
-if (iampl < 0) goto after
-imidi   ftom p5,giRounding
-fluidNote giengine, 3, imidi, iampl
-after:
+iveloc  = 100 - (6*p4)
+ifreq   = 111860.78125 / p5
+imidi   ftom ifreq,giRounding
+fluidNote giengine, 3, imidi, iveloc
 endin
 
 instr 21 ;; "white" noise
-; i2	p2	p3	p4	p5
+; i21	p2	p3	p4	p5
 ;	start	dur	amp	hz
-iampl	=	ampdbfs(p4)
-idens = (p5/2) ;; impulses per sec, 1/2 the shift cycles on average
-iperiod = (p5/16)
+iampl	=	ampdbfs(-20 - (3*p4))
+ifreq   = 111860.78125 / p5
+idens = (ifreq/2) ;; impulses per sec, 1/2 the shift cycles on average
+iperiod = (ifreq/16)
 adust	dust	1, idens
 aphase, aunused syncphasor iperiod, adust
 aout table aphase, ginzw, 1
@@ -90,12 +85,12 @@ gaRight	+=	aout
 endin
 
 instr 31 ;; linear noise
-; i2	p2	p3	p4	p5
+; i31	p2	p3	p4	p5
 ; start	dur	amp	hz
-iampl	=	ampdbfs(p4)
-iperiod = p5/16
-idelay = 15/p5
-;; apulse	mpulse	1, iperiod, idelay
+iampl	=	ampdbfs(-20 - (3*p4))
+ifreq   = 111860.78125 / p5
+iperiod = ifreq/16
+idelay = 15/ifreq
 aout oscil iampl, iperiod, ginzw, (1.001/16)
 gaLeft += aout
 gaRight += aout

@@ -11,8 +11,6 @@ ksmps = 32
 nchnls = 2
 0dbfs = 1
 
-#define DAMPEN #0.0#
-
 ;; AGI sound-alike envelope
 gienv	ftgen	0, 0, 4096, 7, 0.95, 8,  1, 9,  0.95, 9,  0.9, 8,   0.85, 43,  0.8, 51,  0.75, 85,  0.6, 444,  0.2, 409, 0.15, 1195,  0
 
@@ -55,11 +53,11 @@ endin
 instr	11    ;; square wave 1
 ; i11	p2	p3	p4	p5
 ;	start	dur	ampl	pitch
-iampl	=	ampdbfs(p4-$DAMPEN.)
-;; kenv	adsr	0.01, 0.1, 0.25, 0.2 
+iampl	=	ampdbfs(-20 - (3*p4))
+ifreq   =       111860.78125 / p5
 kenv	oscili	1, 0.125, gienv
 klfo	=	oscil:k(0.2,0.5,-1,random:i(0.75,1.0))+0.5
-asq	vco2	iampl, p5, 2, klfo
+asq	vco2	iampl, ifreq, 2, klfo
 aenv	=	asq*kenv
 aoL, aoR pan2	aenv, giPan1, 0
 gaLeft	+=	aoL
@@ -69,11 +67,11 @@ endin
 instr	12    ;; square wave 2
 ; i12	p2	p3	p4	p5
 ;	start	dur	ampl	pitch	
-iampl	=	ampdbfs(p4-$DAMPEN.)
-;; kenv	adsr	0.01, 0.1, 0.25, 0.2 
+iampl	=	ampdbfs(-20 - (3*p4))
+ifreq   =       111860.78125 / p5
 kenv	oscili	1, 0.125, gienv
 klfo	=	oscil:k(0.2,0.5,-1,random:i(0.75,1.0))+0.5
-asq	vco2	iampl, p5, 2, klfo
+asq	vco2	iampl, ifreq, 2, klfo
 aenv	=	asq*kenv
 aoL, aoR pan2	aenv, giPan2, 0
 gaLeft	+=	aoL
@@ -83,11 +81,11 @@ endin
 instr	13    ;; square wave 3
 ; i13	p2	p3	p4	p5	
 ;	start	dur	ampl	pitch
-iampl	=	ampdbfs(p4-$DAMPEN.)
-;; kenv	adsr	0.01, 0.1, 0.25, 0.2 
+iampl	=	ampdbfs(-20 - (3*p4))
+ifreq   =       111860.78125 / p5
 kenv	oscili	1, 0.125, gienv
 klfo	=	oscil:k(0.2,0.5,-1,random:i(0.75,1.0))+0.5
-asq	vco2	iampl, p5, 2, klfo
+asq	vco2	iampl, ifreq, 2, klfo
 aenv	=	asq*kenv
 aoL, aoR pan2	aenv, giPan3, 0
 gaLeft	+=	aoL
@@ -97,9 +95,10 @@ endin
 instr 21 ;; "white" noise
 ; i2	p2	p3	p4	p5
 ;	start	dur	amp	hz
-iampl	=	ampdbfs(p4)
-idens = (p5/2) ;; impulses per sec, 1/2 the shift cycles on average
-iperiod = (p5/16)
+iampl	=	ampdbfs(-20 - (3*p4))
+ifreq   =       111860.78125 / p5
+idens = (ifreq/2) ;; impulses per sec, 1/2 the shift cycles on average
+iperiod = (ifreq/16)
 adust	dust	1, idens
 aphase, aunused syncphasor iperiod, adust
 aout table aphase, ginzw, 1
@@ -111,9 +110,10 @@ endin
 instr 31 ;; linear noise
 ; i2	p2	p3	p4	p5
 ; start	dur	amp	hz
-iampl	=	ampdbfs(p4)
-iperiod = p5/16
-idelay = 15/p5
+iampl	=	ampdbfs(-20 - (3*p4))
+ifreq   =       111860.78125 / p5
+iperiod = ifreq/16
+idelay = 15/ifreq
 ;; apulse	mpulse	1, iperiod, idelay
 aout oscil iampl, iperiod, ginzw, (1.001/16)
 gaLeft += aout

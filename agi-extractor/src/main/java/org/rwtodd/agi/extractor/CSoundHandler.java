@@ -48,6 +48,7 @@ class CSoundHandler implements SoundResource.Handler, Closeable {
     public void voiceStart(int num) {
         curVoice = 10 + num;
         out.printf(";; Start of voice %d (instrument %d)\n", num, curVoice);
+        out.print(";;\tstart\tdur\tlevel\tfreq\n");
     }
 
     @Override
@@ -69,6 +70,7 @@ class CSoundHandler implements SoundResource.Handler, Closeable {
     @Override
     public void noiseStart() {
         out.print(";; Start of noise channel (instrument 21 an 31)\n");
+        out.print(";;\tstart\tdur\tlevel\tfreq\n");
     }
 
     @Override
@@ -90,13 +92,13 @@ class CSoundHandler implements SoundResource.Handler, Closeable {
 
     @Override
     public void noiseEnd() {
-        out.print(";; End of noise channel\n");
+        out.print(";; End of noise channel\n\n");
     }
 
     @Override
     public void soundEnd(int totalDuration) {
-        out.print(";; mixer\n");
-        out.printf("i99 0 %d 0.9 1.0 1.0\n",totalDuration+60);
+        out.print(";; mixer\n;;\tstart\tdur\trev\tlvl1\tlvl2\n");
+        out.printf("i99\t0\t%d\t0.9\t1.0\t1.0\n",totalDuration+60);
     }
 
     @Override
