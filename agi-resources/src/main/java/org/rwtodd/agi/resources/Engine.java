@@ -1,5 +1,7 @@
 package org.rwtodd.agi.resources;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.nio.file.Path;
 
 /**
@@ -8,7 +10,7 @@ import java.nio.file.Path;
  *
  * @author rwtodd
  */
-public class Engine {
+public class Engine implements Closeable {
 
     private final ResourceLoadingFactory loadingFactory;
     private final Path gamePath;
@@ -17,7 +19,9 @@ public class Engine {
     private final String gamePrefix;
     
     private ResourceDirectory resourceDir;
-
+    private VolumeManager volumeMgr;
+    private ResourceLoader resLoader;
+    
     /**
      * Create an Engine with the specified version number, resource path,
      * and prefix.
@@ -35,6 +39,8 @@ public class Engine {
         numericVersion = meta.getVersionNumber();
         gamePrefix = meta.getPrefix();
         resourceDir = null; // not loaded yet
+        volumeMgr = null; // not loaded yet
+        resLoader = null; // not loaded yet
     }
 
     @Override
@@ -42,6 +48,15 @@ public class Engine {
         return String.format("%s Engine v%s", (gamePrefix==null)?"AGI":gamePrefix, strVersion);
     }
 
+    @Override
+    public void close() {
+        try {
+        if(volumeMgr != null) volumeMgr.close();
+        } catch (IOException ioe) {
+            /* do nothing if we can't close */
+        }
+    }
+    
     /**
      * Get the prefix used by this game engine for VOL/DIR files.
      *
@@ -80,11 +95,25 @@ public class Engine {
      * @return a suitable ResourceDirectory.
      * @throws AGIException when there is a problem creating the directory
      */
-    public ResourceDirectory getResourceDirectory()
+    public synchronized ResourceDirectory getResourceDirectory()
             throws AGIException {
         if(resourceDir == null)
             resourceDir = loadingFactory.createResourceDirectory(this);
         return resourceDir;
+    }
+    
+    public synchronized VolumeManager getVolumeManager() throws AGIException {
+        if(volumeMgr == null) {
+            volumeMgr = loadingFactory.createVolumeManager(this);
+        }
+        return volumeMgr;
+    }
+    
+    public synchronized ResourceLoader getResourceLoader() throws AGIException {
+        if(resLoader == null) {
+            resLoader = loadingFactory.createResourceLoader(this);
+        }
+        return resLoader;
     }
     
     /**

@@ -17,4 +17,5 @@ public interface ResourceLoadingFactory {
     GameMetaData      createGameMetaData(Path gamePath) throws AGIException;
     ResourceDirectory createResourceDirectory(Engine engine) throws AGIException;
     VolumeManager     createVolumeManager(Engine engine) throws AGIException;
+    ResourceLoader    createResourceLoader(Engine engine) throws AGIException;
 }

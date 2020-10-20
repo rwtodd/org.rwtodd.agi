@@ -8,10 +8,11 @@ package org.rwtodd.agi.resources;
 import java.nio.file.Path;
 
 /**
- *
+ * Define a ResourceLoadingFactory with default components in it, suitable for most
+ * applications.
  * @author rwtodd
  */
-public class DefaultResourceLoaders implements ResourceLoadingFactory {
+public class DefaultLoadingFactory implements ResourceLoadingFactory {
 
     @Override
     public ResourceDirectory createResourceDirectory(Engine engine) throws AGIException {
@@ -35,6 +36,15 @@ public class DefaultResourceLoaders implements ResourceLoadingFactory {
             return new V3VolumeManager(engine.getGamePath(), engine.getPrefix());
         }
         
+    }
+
+    @Override
+    public ResourceLoader createResourceLoader(Engine engine) throws AGIException {
+        if(engine.isBeforeV3()) {
+            return new V2ResourceLoader(engine.getResourceDirectory(), engine.getVolumeManager());
+        } else {
+            throw new UnsupportedOperationException("TODO!");
+        }
     }
     
 }
