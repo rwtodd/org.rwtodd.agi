@@ -5,10 +5,6 @@
  */
 package org.rwtodd.agi.resources;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-
 /**
  * Responsible for generating DirEntry objects for every resource in a game.
  *
@@ -16,6 +12,14 @@ import java.nio.file.Path;
  */
 public interface ResourceDirectory {
 
+    static ResourceDirectory createDefault(GameMetaData meta) throws AGIException {
+      if (meta.isBeforeV3()) {
+            return new V2ResourceDirectory(meta.getGamePath());
+        } else {
+            return new V3ResourceDirectory(meta.getGamePath(), meta.getPrefix());
+        }    
+    }
+    
     /**
      * Locate the sound resource identified by `number`, or return
      * DirEntry.NON_EXISTENT.

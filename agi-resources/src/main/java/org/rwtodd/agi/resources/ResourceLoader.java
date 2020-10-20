@@ -5,12 +5,36 @@
  */
 package org.rwtodd.agi.resources;
 
+import java.io.Closeable;
+
 /**
- * An interface describing classes that actually load resources and construct objects
- * of them.
+ * An interface describing classes that actually load resources and construct
+ * objects of them.
+ *
  * @author rwtodd
  */
-public interface ResourceLoader {
+public interface ResourceLoader extends Closeable {
+
+    static ResourceLoader createDefault(GameMetaData meta, ResourceDirectory resdir, VolumeManager volmgr)
+            throws AGIException {
+        if (meta.isBeforeV3()) {
+            return new V2ResourceLoader(resdir, volmgr);
+        } else {
+            throw new UnsupportedOperationException("TODO!");
+        }
+    }
+
+    static ResourceLoader createDefault(GameMetaData meta) throws AGIException {
+        return ResourceLoader.createDefault(
+                meta,
+                ResourceDirectory.createDefault(meta),
+                VolumeManager.createDefault(meta));
+    }
+
+    int  getSoundCount();
+    int  getPicCount();
+    int  getViewCount();
+    int  getLogicCount();
+    
     void loadSound(int number) throws AGIException, ResourceNotPresentException;
-    void loadSound(DirEntry de) throws AGIException, ResourceNotPresentException;
 }

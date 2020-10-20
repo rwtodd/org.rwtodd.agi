@@ -8,5 +8,14 @@ import java.io.Closeable;
  * @author rwtodd
  */
 public interface VolumeManager extends Closeable {
+    
+    static VolumeManager createDefault(GameMetaData meta) {
+      if (meta.isBeforeV3()) {
+            return new V2VolumeManager(meta.getGamePath());
+        } else {
+            return new V3VolumeManager(meta.getGamePath(), meta.getPrefix());
+        }
+    }
+        
     byte[] getResource(DirEntry de) throws AGIException, ResourceNotPresentException;
 }

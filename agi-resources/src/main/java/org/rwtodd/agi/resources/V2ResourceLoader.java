@@ -10,7 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- *
+ * A resource loader for V2 AGI games.
  * @author rwtodd
  */
 public class V2ResourceLoader implements ResourceLoader {
@@ -24,6 +24,28 @@ public class V2ResourceLoader implements ResourceLoader {
     }
 
     @Override
+    public void close() throws IOException {
+        vmgr.close();
+    }
+    
+    @Override
+    public int getSoundCount() {
+        return rdir.getSoundCount();
+    }
+    @Override
+    public int getPicCount() {
+        return rdir.getPicCount();
+    }
+    @Override
+    public int getViewCount() {
+        return rdir.getViewCount();
+    }
+    @Override
+    public int getLogicCount() {
+        return rdir.getLogicCount();
+    }
+    
+    @Override
     public void loadSound(int number) throws AGIException, ResourceNotPresentException {
         final var dirEntry = rdir.findSound(number);
         if(!dirEntry.isPresent()) {
@@ -32,8 +54,7 @@ public class V2ResourceLoader implements ResourceLoader {
         loadSound(dirEntry);
     }
 
-    @Override
-    public void loadSound(DirEntry de) throws AGIException, ResourceNotPresentException {
+    protected void loadSound(DirEntry de) throws AGIException, ResourceNotPresentException {
         final var resbytes = vmgr.getResource(de);
         try {
             Files.write(Path.of(".",de.toString()), resbytes);

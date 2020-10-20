@@ -1,9 +1,12 @@
 package org.rwtodd.agi.extractor;
 
+import java.io.IOException;
 import org.rwtodd.agi.resources.AGIException;
-import org.rwtodd.agi.resources.DefaultLoadingFactory;
-import org.rwtodd.agi.resources.Engine;
+import org.rwtodd.agi.resources.OnDiskMetaData;
+import org.rwtodd.agi.resources.ResourceDirectory;
+import org.rwtodd.agi.resources.ResourceLoader;
 import org.rwtodd.agi.resources.ResourceNotPresentException;
+import org.rwtodd.agi.resources.VolumeManager;
 import org.rwtodd.args.*;
 
 /**
@@ -21,21 +24,25 @@ public class Cmd {
             if (efp.getValue() == null) {
                 parser.requestHelp();
             }
-            final var rlf = new DefaultLoadingFactory();
-            try (final var engine = new Engine(efp.getValue(), rlf)) {
-                final var directory = engine.getResourceDirectory();
-                System.out.println(engine);
-                System.out.printf("There are %d logics.\n", directory.getLogicCount());
-                System.out.printf("There are %d pics.\n", directory.getPicCount());
-                System.out.printf("There are %d views.\n", directory.getViewCount());
-                System.out.printf("There are %d sounds.\n", directory.getSoundCount());
+
+            final var metadata = new OnDiskMetaData(efp.getValue());
+            final var resdir = ResourceDirectory.createDefault(metadata);
+            final var volmgr = VolumeManager.createDefault(metadata);
+            try (final var resloader = ResourceLoader.createDefault(metadata, resdir, volmgr)) {
+                System.out.printf("Game is version %s\n", metadata.getVersionString());
+                if (metadata.isV3()) {
+                    System.out.printf("The game preix is %s\n", metadata.getPrefix());
+                }
+                System.out.printf("There are %d logics.\n", resdir.getLogicCount());
+                System.out.printf("There are %d pics.\n", resdir.getPicCount());
+                System.out.printf("There are %d views.\n", resdir.getViewCount());
+                System.out.printf("There are %d sounds.\n", resdir.getSoundCount());
 
                 // now dump all the sounds...
-                final var rl = engine.getResourceLoader();
-                for (int i = 0; i < directory.getSoundCount(); ++i) {
+                for (int i = 0; i < resloader.getSoundCount(); ++i) {
                     try {
                         System.out.println("Loading sound " + i);
-                        rl.loadSound(i);
+                        resloader.loadSound(i);
                     } catch (ResourceNotPresentException rnp) {
                         System.out.println("Sound " + i + " isn't in the resources.");
                     }
@@ -51,6 +58,10 @@ public class Cmd {
             System.exit(1);
         } catch (AGIException agi) {
             System.err.println("Error! " + agi.getMessage());
+            System.exit(1);
+        } catch (IOException ioe) {
+            System.err.println(ioe);
+            System.exit(1);
         }
     }
 }

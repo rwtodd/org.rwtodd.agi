@@ -11,18 +11,28 @@ import java.nio.file.Path;
 
 /**
  * Extracts metadata from the disk files of the game.
+ *
  * @author rwtodd
  */
 public class OnDiskMetaData implements GameMetaData {
 
     private final String versionString;
     private final String prefixString;
+    private final double version;
+    private final Path gamePath;
 
-    public OnDiskMetaData(Path gamePath) throws AGIException {
+    public OnDiskMetaData(final Path gamePath) throws AGIException {
+        this.gamePath = gamePath;
         versionString = OnDiskMetaData.extractVersion(gamePath);
-        prefixString = (versionString.charAt(0) == '3')
+        version = GameMetaData.deriveNumericVersion(versionString);
+        prefixString = (version > 2.9999)
                 ? OnDiskMetaData.determinePrefix(gamePath)
                 : null;
+    }
+
+    @Override
+    public Path getGamePath() {
+        return gamePath;
     }
 
     @Override
@@ -33,6 +43,11 @@ public class OnDiskMetaData implements GameMetaData {
     @Override
     public String getPrefix() {
         return prefixString;
+    }
+
+    @Override
+    public double getVersion() {
+        return version;
     }
 
     /**
