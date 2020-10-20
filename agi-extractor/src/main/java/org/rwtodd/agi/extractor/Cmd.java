@@ -1,6 +1,7 @@
 package org.rwtodd.agi.extractor;
 
 import java.io.IOException;
+import java.nio.file.Paths;
 import org.rwtodd.agi.resources.AGIException;
 import org.rwtodd.agi.resources.OnDiskMetaData;
 import org.rwtodd.agi.resources.ResourceDirectory;
@@ -17,6 +18,7 @@ import org.rwtodd.args.*;
 public class Cmd {
 
     public static void main(String[] args) {
+        //args = new String[] { "-dh:\\game\\kings-quest-3" };
         try {
             var efp = new ExistingFileParam("dir", 'd', "directory", "Which directory to be in.");
             var parser = new Parser(efp, new HelpParam());
@@ -42,7 +44,12 @@ public class Cmd {
                 for (int i = 0; i < resloader.getSoundCount(); ++i) {
                     try {
                         System.out.println("Loading sound " + i);
-                        resloader.loadSound(i);
+                        final var res = resloader.loadSound(i);
+                        try (final var handler = new CSoundHandler(Paths.get(String.format("sound_%03d.sco", i)))) {
+                            res.streamToHandler(handler);
+                        }
+                    } catch (IOException ioe) {
+                        System.err.println("IO Error during sound " + i + " " + ioe);
                     } catch (ResourceNotPresentException rnp) {
                         System.out.println("Sound " + i + " isn't in the resources.");
                     } catch (AGIException ae) {

@@ -35,5 +35,5 @@ public interface ResourceLoader extends Closeable {
 
     int getLogicCount();
 
-    void loadSound(int number) throws AGIException, ResourceNotPresentException;
+    SoundResource loadSound(int number) throws AGIException, ResourceNotPresentException;
 }

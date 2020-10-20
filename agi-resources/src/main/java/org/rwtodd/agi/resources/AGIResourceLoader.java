@@ -48,21 +48,17 @@ public class AGIResourceLoader implements ResourceLoader {
     }
     
     @Override
-    public void loadSound(int number) throws AGIException, ResourceNotPresentException {
+    public SoundResource loadSound(int number) throws AGIException, ResourceNotPresentException {
         final var dirEntry = rdir.findSound(number);
         if(!dirEntry.isPresent()) {
             throw new ResourceNotPresentException("Sound resource " + number + " isn't present!");
         }
-        loadSound(dirEntry);
+        return loadSound(number, dirEntry);
     }
 
-    protected void loadSound(DirEntry de) throws AGIException, ResourceNotPresentException {
+    protected SoundResource loadSound(int number, DirEntry de) throws AGIException, ResourceNotPresentException {
         final var resbytes = vmgr.getResource(de);
-        try {
-            Files.write(Path.of(".",de.toString()), resbytes);
-        } catch (IOException ioe) {
-            throw new AGIException("Problem writing out resource.", ioe);
-        }
+        return new SoundResource(number, de, resbytes);
     }
 
 }
