@@ -1,5 +1,25 @@
 for %x in (*.sco) do (%cs% -odac ..\agi-synth.orc %x & echo %x & pause)
 
+it looks like scummvm uses this for pcjr:
+#define FREQ_DIV 111844
+instead of 111860.blah... I should try that and see what it does...
+
+.... but their midi output uses:
+	ll = log10(pow(2.0, 1.0 / 12.0));
+	freq = ((snddata[pos + 2] & 0x3F)  <<  4)  + (snddata[pos + 3] & 0x0F);
+	/* I don't know,  what frequency equals midi note 0 ... */
+	/* This moves the song 4 octaves down: */
+	fr = (log10(111860.0 / (double)freq) / ll) - 48;
+	note = (int)floor(fr + 0.5);
+	if (note < 0) note = 0;
+	if (note > 127) note = 127;
+
+... so I guess I can find the *right* subtraction (NOT 48) to make this work, and see if it magically
+works for everything.  Maybe it will.
+
+Anyway, for turning on the rouning, check out these...
+
+
 To check out....
 manhunter_1 --
 006
@@ -35,3 +55,8 @@ manhunter_2 --
 199*
 210*
 211*
+
+goldrush --
+001*
+002
+
