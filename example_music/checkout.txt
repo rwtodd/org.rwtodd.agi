@@ -1,0 +1,23 @@
+for %x in (*.sco) do (%cs% -odac ..\agi-synth.orc %x & echo %x & pause)
+
+To check out....
+manhunter_1 --
+006
+008
+027
+033
+045
+047
+050
+068
+073
+082
+089
+090
+105
+112
+113
+115
+116
+123
+
