@@ -6,9 +6,6 @@ ksmps = 32
 nchnls = 2
 0dbfs = 1
 
-;; should we round the midi notes to nearest int?
-giRounding      init    0   
-
 ;; noise wave...16 units long: 1 0 0 0  0 0 0 0  0 0 0 0  0 0 0 0
 ginzw	ftgen	0, 0, 16, -7, 1, 1, 1, 0, 0, 15, 0
 
@@ -30,15 +27,11 @@ instr 1       ;; set program
    fluidProgramSelect giengine, ich, gisfnum, ibk, ipt
 endin
 
-instr   2     ;; set panning, rounding
+instr   2     ;; set panning
 ; i2	p2    p3     [1-3] pan
 iWhich  = p4
 iPanVal = int(p5*128)
-if (iWhich == 4) igoto roundingSet ;; the rounding code
    fluidCCi giengine, iWhich, 10, iPanVal
-goto after
-roundingSet:
-   giRounding = p5
 after:
 endin
 
@@ -47,7 +40,7 @@ instr	11    ;; square wave 1
 ;	start	dur	ampl	pitch
 iveloc  = 100 - (6*p4)
 ifreq   = 111860.78125 / p5
-imidi   ftom ifreq,giRounding
+imidi = round(36+12*log2(ifreq/64.0))
 fluidNote giengine, 1, imidi, iveloc
 endin
 
@@ -56,7 +49,7 @@ instr	12    ;; square wave 2
 ;	start	dur	ampl	pitch
 iveloc  = 100 - (6*p4)
 ifreq   = 111860.78125 / p5
-imidi   ftom ifreq,giRounding
+imidi = round(36+12*log2(ifreq/64.0))
 fluidNote giengine, 2, imidi, iveloc
 endin
 
@@ -65,7 +58,7 @@ instr	13    ;; square wave 3
 ;	start	dur	ampl	pitch
 iveloc  = 100 - (6*p4)
 ifreq   = 111860.78125 / p5
-imidi   ftom ifreq,giRounding
+imidi = round(36+12*log2(ifreq/64.0))
 fluidNote giengine, 3, imidi, iveloc
 endin
 

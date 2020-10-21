@@ -12,7 +12,6 @@ i 1  0  0  3   0 4   ;; 4 Rhodes piano
 i 2  0  0  1 0.5     ;; middle
 i 2  0  0  2 0.7     ;; right
 i 2  0  0  3 0.3     ;; left
-i 2  0  0  4 1
 
 ;; Start of voice 1 (instrument 11)
 ;;	start	dur	level	freq
