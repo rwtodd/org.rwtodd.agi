@@ -1,12 +1,7 @@
-; This is '.', sound resource #37 of length 61.799999
+;; AGI Sound Resource 37 (Volume 2 Offset 144585)
 
-; orchestra is expected to have equivalents for
-; PCJr/Tandy 3-voice sounds:
-; Instrument 11-13 for the main voice (square wave)
-; Instrument 21 for white noise
-; Instrument 31 for 'linear noise'
-; Instrument 99 for mixing/reverb
-t 0 360  ; 1/6th second, aligns with AGI timing of 1/60th second
+
+t 0 3600 ;; AGI runs in 1/60th second ticks
 
 ; set up the instruments
 i 1  0  0  1   0 14 ; tubular bells
@@ -14,104 +9,112 @@ i 1  0  0  2   0 88 ; fantasia
 i 1  0  0  3   0 88 ; fantasia
 
 ; set up the panning
-i 2  0  0  1 0.5
-i 2  0  0  2 0.7
-i 2  0  0  3 0.3
-i 2  0  0  4 0
+i 2  0  0  1 0.5     ;; middle
+i 2  0  0  2 0.7     ;; right
+i 2  0  0  3 0.3     ;; left
+
 
 ; Set the reverb for 1 second longer than the song
 ;   				reverb	gain	gain
 ; 99	start	dur	depth	Start	End
-i 99	0	100	0.9	1.0	1.0
-i 99	+	24.6	0.9	1.0	0.001
+i 99	0	1000	0.9	1.0	1.0
+i 99	+	246	0.9	1.0	0.001
 
+;; Start of voice 1 (instrument 11)
+;;	start	dur	level	freq
+i11	0	25	0	58
+i11	25	26	0	55
+i11	51	26	0	58
+i11	77	26	0	61
+i11	103	25	0	73
+i11	128	26	0	61
+i11	154	26	0	58
+i11	180	26	0	55
+i11	206	25	0	58
+i11	232	25	0	61
+i11	257	26	0	73
+i11	283	26	0	61
+i11	309	26	0	58
+i11	335	25	0	55
+i11	360	26	0	52
+i11	386	26	0	55
+i11	412	26	0	46
+i11	438	25	0	55
+i11	463	26	0	58
+i11	489	26	0	55
+i11	515	26	0	52
+i11	541	25	0	55
+i11	566	26	0	78
+i11	592	26	0	61
+;; End of instrument 11
 
-; ****  Voice 1
-; 11	time	dur	db	freq	pan
-i 11	0.000	2.50	-20	1928.634155	
-i 11	+	2.60	-20	2033.832397	
-i 11	+	2.60	-20	1928.634155	
-i 11	+	2.60	-20	1833.783325	
-i 11	+	2.50	-20	1532.339478	
-i 11	+	2.60	-20	1833.783325	
-i 11	+	2.60	-20	1928.634155	
-i 11	+	2.60	-20	2033.832397	
-i 11	+	2.50	-20	1928.634155	
-i 11	23.200	2.50	-20	1833.783325	
-i 11	+	2.60	-20	1532.339478	
-i 11	+	2.60	-20	1833.783325	
-i 11	+	2.60	-20	1928.634155	
-i 11	+	2.50	-20	2033.832397	
-i 11	+	2.60	-20	2151.168945	
-i 11	+	2.60	-20	2033.832397	
-i 11	+	2.60	-20	2431.756104	
-i 11	+	2.50	-20	2033.832397	
-i 11	+	2.60	-20	1928.634155	
-i 11	+	2.60	-20	2033.832397	
-i 11	+	2.60	-20	2151.168945	
-i 11	+	2.50	-20	2033.832397	
-i 11	+	2.60	-20	1434.112549	
-i 11	+	2.60	-20	1833.783325	
+;; Start of voice 2 (instrument 12)
+;;	start	dur	level	freq
+i12	0	154	2	165
+i12	154	155	2	175
+i12	309	155	2	185
+i12	464	128	2	196
+;; End of instrument 12
 
+;; Start of voice 3 (instrument 13)
+;;	start	dur	level	freq
+i13	0	154	1	185
+i13	154	155	1	196
+i13	309	155	1	208
+i13	464	154	1	220
+;; End of instrument 13
 
-; ****  Voice 2
-; 12	time	dur	db	freq	pan
-i 12	0.000	15.40	-26	677.944153	
-i 12	+	15.50	-26	639.204468	
-i 12	+	15.50	-26	604.652893	
-i 12	+	12.80	-26	570.718262	
+;; Start of noise channel (instrument 21 an 31)
+;;	start	dur	level	freq
+;; End of noise channel
 
+b 618
 
-; ****  Voice 3
-; 13	time	dur	db	freq	pan
-i 13	0.000	15.40	-23	604.652893	
-i 13	+	15.50	-23	570.718262	
-i 13	+	15.50	-23	537.792236	
-i 13	+	15.40	-23	508.458099	
+;; Start of voice 1 (instrument 11)
+;;	start	dur	level	freq
+i11	0	25	0	58
+i11	25	26	0	55
+i11	51	26	0	58
+i11	77	26	0	61
+i11	103	25	0	73
+i11	128	26	0	61
+i11	154	26	0	58
+i11	180	26	0	55
+i11	206	25	0	58
+i11	232	25	0	61
+i11	257	26	0	73
+i11	283	26	0	61
+i11	309	26	0	58
+i11	335	25	0	55
+i11	360	26	0	52
+i11	386	26	0	55
+i11	412	26	0	46
+i11	438	25	0	55
+i11	463	26	0	58
+i11	489	26	0	55
+i11	515	26	0	52
+i11	541	25	0	55
+i11	566	26	0	78
+i11	592	26	0	61
+;; End of instrument 11
 
+;; Start of voice 2 (instrument 12)
+;;	start	dur	level	freq
+i12	0	154	1	165
+i12	154	155	1	175
+i12	309	155	1	185
+i12	464	128	1	196
+;; End of instrument 12
 
-b 61.8
+;; Start of voice 3 (instrument 13)
+;;	start	dur	level	freq
+i13	0	154	1	185
+i13	154	155	1	196
+i13	309	155	1	208
+i13	464	154	1	220
+;; End of instrument 13
 
-; ****  Voice 1
-; 11	time	dur	db	freq	pan
-i 11	0.000	2.50	-20	1928.634155	
-i 11	+	2.60	-20	2033.832397	
-i 11	+	2.60	-20	1928.634155	
-i 11	+	2.60	-20	1833.783325	
-i 11	+	2.50	-20	1532.339478	
-i 11	+	2.60	-20	1833.783325	
-i 11	+	2.60	-20	1928.634155	
-i 11	+	2.60	-20	2033.832397	
-i 11	+	2.50	-20	1928.634155	
-i 11	23.200	2.50	-20	1833.783325	
-i 11	+	2.60	-20	1532.339478	
-i 11	+	2.60	-20	1833.783325	
-i 11	+	2.60	-20	1928.634155	
-i 11	+	2.50	-20	2033.832397	
-i 11	+	2.60	-20	2151.168945	
-i 11	+	2.60	-20	2033.832397	
-i 11	+	2.60	-20	2431.756104	
-i 11	+	2.50	-20	2033.832397	
-i 11	+	2.60	-20	1928.634155	
-i 11	+	2.60	-20	2033.832397	
-i 11	+	2.60	-20	2151.168945	
-i 11	+	2.50	-20	2033.832397	
-i 11	+	2.60	-20	1434.112549	
-i 11	+	2.60	-20	1833.783325	
-
-
-; ****  Voice 2
-; 12	time	dur	db	freq	pan
-i 12	0.000	15.40	-26	677.944153	
-i 12	+	15.50	-26	639.204468	
-i 12	+	15.50	-26	604.652893	
-i 12	+	12.80	-26	570.718262	
-
-
-; ****  Voice 3
-; 13	time	dur	db	freq	pan
-i 13	0.000	15.40	-25	604.652893	
-i 13	+	15.50	-25	570.718262	
-i 13	+	15.50	-25	537.792236	
-i 13	+	15.40	-25	508.458099	
+;; Start of noise channel (instrument 21 an 31)
+;;	start	dur	level	freq
+;; End of noise channel
 

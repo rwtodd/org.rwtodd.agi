@@ -1,12 +1,7 @@
-; This is '.', sound resource #26 of length 18.200001
+;; AGI Sound Resource 26 (Volume 0 Offset 22706)
 
-; orchestra is expected to have equivalents for
-; PCJr/Tandy 3-voice sounds:
-; Instrument 11-13 for the main voice (square wave)
-; Instrument 21 for white noise
-; Instrument 31 for 'linear noise'
-; Instrument 99 for mixing/reverb
-t 0 360  ; 1/6th second, aligns with AGI timing of 1/60th second
+
+t 0 3600 ;; AGI runs in 1/60th second ticks
 
 ; set up the instruments
 i 1  0  0  1   0 6  ; harpsichord
@@ -14,55 +9,54 @@ i 1  0  0  2   0 6  ; harpsichord
 i 1  0  0  3   0 6  ; harpsichord
 
 ; set up the panning
-i 2  0  0  1 0.5
-i 2  0  0  2 0.7
-i 2  0  0  3 0.3
-i 2  0  0  4 0
-
-; Set the reverb for 1 second longer than the song
-;   				reverb	gain	gain
-; 99	start	dur	depth	Start	End
-i 99	0	24.200	0.9	1.0	1.0
+i 2  0  0  1 0.5     ;; middle
+i 2  0  0  2 0.7     ;; right
+i 2  0  0  3 0.3     ;; left
 
 
-; ****  Voice 1
-; 11	time	dur	db	freq	pan
-i 11	0.100	0.80	-20	537.792236	
-i 11	+	0.90	-20	604.652893	
-i 11	+	0.80	-20	639.204468	
-i 11	+	0.90	-20	717.056274	
-i 11	+	0.80	-20	804.753845	
-i 11	+	0.90	-20	853.899109	
-i 11	+	2.60	-20	804.753845	
-i 11	+	2.60	-20	639.204468	
-i 11	+	7.80	-20	537.792236	
+;; Start of voice 1 (instrument 11)
+;;	start	dur	level	freq
+i11	1	8	0	208
+i11	9	9	0	185
+i11	18	8	0	175
+i11	26	9	0	156
+i11	35	8	0	139
+i11	43	9	0	131
+i11	52	26	0	139
+i11	78	26	0	175
+i11	104	78	0	208
+;; End of instrument 11
 
+;; Start of voice 2 (instrument 12)
+;;	start	dur	level	freq
+i12	0	9	2	416
+i12	9	8	2	371
+i12	17	9	2	350
+i12	26	8	2	312
+i12	34	9	2	278
+i12	43	9	2	262
+i12	52	25	2	278
+i12	77	26	2	350
+i12	103	78	2	416
+;; End of instrument 12
 
-; ****  Voice 2
-; 12	time	dur	db	freq	pan
-i 12	0.000	0.90	-26	268.896118	
-i 12	+	0.80	-26	301.511536	
-i 12	+	0.90	-26	319.602234	
-i 12	+	0.80	-26	358.528137	
-i 12	+	0.90	-26	402.376923	
-i 12	+	0.90	-26	426.949554	
-i 12	+	2.50	-26	402.376923	
-i 12	+	2.60	-26	319.602234	
-i 12	+	7.80	-26	268.896118	
+;; Start of voice 3 (instrument 13)
+;;	start	dur	level	freq
+i13	0	9	1	833
+i13	9	8	1	742
+i13	18	8	1	700
+i13	26	9	1	624
+i13	35	8	1	556
+i13	43	9	1	525
+i13	52	26	1	556
+i13	78	25	1	700
+i13	103	79	1	833
+;; End of instrument 13
 
+;; Start of noise channel (instrument 21 an 31)
+;;	start	dur	level	freq
+;; End of noise channel
 
-; ****  Voice 3
-; 13	time	dur	db	freq	pan
-i 13	0.000	0.90	-23	134.286652	
-i 13	+	0.80	-23	150.755768	
-i 13	1.800	0.80	-23	159.801117	
-i 13	+	0.90	-23	179.264069	
-i 13	+	0.80	-23	201.188461	
-i 13	+	0.90	-23	213.068161	
-i 13	+	2.60	-23	201.188461	
-i 13	+	2.50	-23	159.801117	
-i 13	+	7.90	-23	134.286652	
-
-
-; ****  Voice 4 (Noise)
-;  	time	dur	db	freq
+;; mixer
+;;	start	dur	rev	lvl1	lvl2
+i99	0	242	0.9	1.0	1.0
