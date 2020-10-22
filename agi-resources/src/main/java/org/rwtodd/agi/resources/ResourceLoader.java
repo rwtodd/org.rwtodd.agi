@@ -38,4 +38,5 @@ public interface ResourceLoader extends Closeable {
     SoundResource loadSound(int number) throws AGIException, ResourceNotPresentException;
 
     WordsResource loadWords() throws AGIException;
+    ObjectsResource loadObjects() throws AGIException;
 }

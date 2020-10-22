@@ -80,4 +80,17 @@ public class AGIResourceLoader implements ResourceLoader {
             throw new AGIException("Could not load WORDS.TOK!", e);
         }
     }
+    
+    @Override
+    public ObjectsResource loadObjects() throws AGIException {
+        try {
+            final var objfile = Files.readAllBytes(gamePath.resolve("OBJECT"));
+            if(version >= 2.411) {
+                Util.decodeInPlace(objfile);
+            }
+            return new ObjectsResource(objfile);
+        } catch(Exception e) {
+            throw new AGIException("Could not load OBJECT!", e);
+        }
+    }
 }

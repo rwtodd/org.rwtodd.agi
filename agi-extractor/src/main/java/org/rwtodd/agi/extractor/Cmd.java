@@ -5,8 +5,6 @@ import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.charset.StandardCharsets;
-import java.util.Comparator;
-import java.util.Map;
 import org.rwtodd.agi.resources.AGIException;
 import org.rwtodd.agi.resources.OnDiskMetaData;
 import org.rwtodd.agi.resources.ResourceDirectory;
@@ -27,10 +25,12 @@ public class Cmd {
         try {
             final var efp = new ExistingFileParam("dir", 'd', "directory", "Which directory to be in.");
             final var doCSound = new FlagParam("csound", ' ', "write csound scores for all sounds.");
-            final var doWords = new FlagParam("words", ' ', "write out the words.tok resources");
+            final var doWords = new FlagParam("words", ' ', "write out the WORDS.TOK resources");
+            final var doObjects = new FlagParam("objects", ' ', "write out the OBJECTS resources");
             WordDictionaryHandler wordDictionary = null; // may or may not load the words...
+            ObjectDictionaryHandler objectDictionary = null;    // may or may not load the objects....
 
-            var parser = new Parser(efp, doCSound, doWords, new HelpParam());
+            var parser = new Parser(efp, doCSound, doWords, doObjects, new HelpParam());
             parser.parse(args);
             if (efp.getValue() == null) {
                 parser.requestHelp();
@@ -65,6 +65,20 @@ public class Cmd {
 
                 if (doWords.getValue()) {
                     runWordDescription(wordDictionary);
+                }
+
+                // there will eventually be other reasons (like LOGIC) to load objects
+                if (doObjects.getValue()) {
+                    try {
+                        objectDictionary = new ObjectDictionaryHandler();
+                        resloader.loadObjects().streamToHandler(objectDictionary);
+                    } catch (AGIException agi) {
+                        describeException("Error loading objects: ", agi);
+                    }
+                }
+
+                if (doObjects.getValue()) {
+                    runObjectsDescription(objectDictionary);
                 }
             }
         } catch (CommandLineException cle) {
@@ -107,6 +121,21 @@ public class Cmd {
         System.err.println(msg + " " + ex.getMessage());
         if (ex.getCause() != null) {
             System.err.println("Cause: " + ex.getCause().getMessage());
+        }
+    }
+
+    private static void runObjectsDescription(final ObjectDictionaryHandler objectDictionary) {
+        try (
+                final var olist = new PrintWriter(
+                        Files.newBufferedWriter(Paths.get("object_list.csv"), StandardCharsets.UTF_8))) {
+            olist.print("\"NUMBER\",\"OBJECT\",\"STARTING ROOM\"\n");
+            final var entries = objectDictionary.getObjects();
+            for (int i = 0; i < entries.size(); ++i) {
+                final var obj = entries.get(i);
+                olist.printf("\"%d\",\"%s\",\"%d\"\n", i, obj.getName(), obj.getStartingRoom());
+            }
+        } catch (IOException ioe) {
+            describeException("Error writing object list", ioe);
         }
     }
 
