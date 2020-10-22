@@ -1,7 +1,12 @@
 package org.rwtodd.agi.extractor;
 
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.charset.StandardCharsets;
+import java.util.Comparator;
+import java.util.Map;
 import org.rwtodd.agi.resources.AGIException;
 import org.rwtodd.agi.resources.OnDiskMetaData;
 import org.rwtodd.agi.resources.ResourceDirectory;
@@ -9,6 +14,7 @@ import org.rwtodd.agi.resources.ResourceLoader;
 import org.rwtodd.agi.resources.ResourceNotPresentException;
 import org.rwtodd.agi.resources.VolumeManager;
 import org.rwtodd.args.*;
+import java.util.Map.Entry;
 
 /**
  * Runs the show.
@@ -18,10 +24,13 @@ import org.rwtodd.args.*;
 public class Cmd {
 
     public static void main(String[] args) {
-        //args = new String[] { "-dh:\\game\\kings-quest-3" };
         try {
-            var efp = new ExistingFileParam("dir", 'd', "directory", "Which directory to be in.");
-            var parser = new Parser(efp, new HelpParam());
+            final var efp = new ExistingFileParam("dir", 'd', "directory", "Which directory to be in.");
+            final var doCSound = new FlagParam("csound", ' ', "write csound scores for all sounds.");
+            final var doWords = new FlagParam("words", ' ', "write out the words.tok resources");
+            WordDictionaryHandler wordDictionary = null; // may or may not load the words...
+
+            var parser = new Parser(efp, doCSound, doWords, new HelpParam());
             parser.parse(args);
             if (efp.getValue() == null) {
                 parser.requestHelp();
@@ -40,21 +49,22 @@ public class Cmd {
                 System.out.printf("There are %d views.\n", resloader.getViewCount());
                 System.out.printf("There are %d sounds.\n", resloader.getSoundCount());
 
-                // now dump all the sounds...
-                for (int i = 0; i < resloader.getSoundCount(); ++i) {
+                if (doCSound.getValue()) {
+                    runCSoundExtractor(resloader);
+                }
+
+                // there will eventually be other reasons (like LOGIC) to load words
+                if (doWords.getValue()) {
                     try {
-                        System.out.println("Loading sound " + i);
-                        final var res = resloader.loadSound(i);
-                        try (final var handler = new CSoundHandler(Paths.get(String.format("sound_%03d.sco", i)))) {
-                            res.streamToHandler(handler);
-                        }
-                    } catch (IOException ioe) {
-                        System.err.println("IO Error during sound " + i + " " + ioe);
-                    } catch (ResourceNotPresentException rnp) {
-                        System.out.println("Sound " + i + " isn't in the resources.");
-                    } catch (AGIException ae) {
-                        System.err.println("ERROR: " + ae);
+                        wordDictionary = new WordDictionaryHandler();
+                        resloader.loadWords().streamToHandler(wordDictionary);
+                    } catch (AGIException agi) {
+                        describeException("Error loading words: ", agi);
                     }
+                }
+
+                if (doWords.getValue()) {
+                    runWordDescription(wordDictionary);
                 }
             }
         } catch (CommandLineException cle) {
@@ -66,11 +76,68 @@ public class Cmd {
             }
             System.exit(1);
         } catch (AGIException agi) {
-            System.err.println("Error! " + agi.getMessage());
+            describeException("Error!", agi);
             System.exit(1);
         } catch (IOException ioe) {
             System.err.println(ioe);
             System.exit(1);
+        }
+    }
+
+    private static void runCSoundExtractor(final ResourceLoader resloader) {
+        // now dump all the sounds...
+        for (int i = 0; i < resloader.getSoundCount(); ++i) {
+            try {
+                System.out.println("Loading sound " + i);
+                final var res = resloader.loadSound(i);
+                try (final var handler = new CSoundHandler(Paths.get(String.format("sound_%03d.sco", i)))) {
+                    res.streamToHandler(handler);
+                }
+            } catch (IOException ioe) {
+                System.err.println("IO Error during sound " + i + " " + ioe);
+            } catch (ResourceNotPresentException rnp) {
+                System.out.println("Sound " + i + " isn't in the resources.");
+            } catch (AGIException ae) {
+                describeException("ERROR:", ae);
+            }
+        }
+    }
+
+    private static void describeException(String msg, Exception ex) {
+        System.err.println(msg + " " + ex.getMessage());
+        if (ex.getCause() != null) {
+            System.err.println("Cause: " + ex.getCause().getMessage());
+        }
+    }
+
+    private static void runWordDescription(final WordDictionaryHandler wordDictionary) {
+        try (
+                final var wlist = new PrintWriter(
+                        Files.newBufferedWriter(Paths.get("word_list.csv"), StandardCharsets.UTF_8))) {
+
+            wlist.print("\"WORD\",\"GROUP_NO\"\n");
+            wordDictionary.wordStream()
+                    .sorted(Entry.comparingByKey())
+                    .forEachOrdered(word
+                            -> wlist.printf("\"%s\",\"%d\"\n", word.getKey(), word.getValue())
+                    );
+        } catch (IOException ioe) {
+            describeException("Error writing word list", ioe);
+        }
+
+        try (
+                final var glist = new PrintWriter(
+                        Files.newBufferedWriter(Paths.get("word_groups.csv"), StandardCharsets.UTF_8))) {
+            glist.print("\"GROUP_NO\",\"WORDS\"\n");
+            wordDictionary.groupStream()
+                    .sorted(Entry.comparingByKey())
+                    .forEachOrdered(group -> {
+                        glist.printf("\"%s\"", group.getKey());
+                        group.getValue().forEach(word -> glist.printf(",\"%s\"", word));
+                        glist.print("\n");
+                    });
+        } catch (IOException ioe) {
+            describeException("Error writing word list", ioe);
         }
     }
 }

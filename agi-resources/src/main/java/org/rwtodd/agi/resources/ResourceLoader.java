@@ -17,7 +17,7 @@ public interface ResourceLoader extends Closeable {
 
     static ResourceLoader createDefault(GameMetaData meta, ResourceDirectory resdir, VolumeManager volmgr)
             throws AGIException {
-        return new AGIResourceLoader(meta.getVersion(), resdir, volmgr);
+        return new AGIResourceLoader(meta.getGamePath(), meta.getVersion(), resdir, volmgr);
     }
 
     static ResourceLoader createDefault(GameMetaData meta) throws AGIException {
@@ -36,4 +36,6 @@ public interface ResourceLoader extends Closeable {
     int getLogicCount();
 
     SoundResource loadSound(int number) throws AGIException, ResourceNotPresentException;
+
+    WordsResource loadWords() throws AGIException;
 }
