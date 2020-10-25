@@ -3,7 +3,7 @@ package org.rwtodd.agi.resources;
 /**
  * Represents the AGI Objects list. It does minimal interpretation and
  * validation of the resource, and works with a client-provided Handler to build
- * the representation of the sound needed by the client.
+ * the representation of the object needed by the client.
  *
  * @author rwtodd
  */

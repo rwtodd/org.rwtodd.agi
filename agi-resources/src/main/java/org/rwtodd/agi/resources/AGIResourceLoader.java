@@ -72,6 +72,20 @@ public class AGIResourceLoader implements ResourceLoader {
     }
 
     @Override
+    public PicResource loadPic(int number) throws AGIException, ResourceNotPresentException {
+        final var dirEntry = rdir.findPic(number);
+        if (!dirEntry.isPresent()) {
+            throw new ResourceNotPresentException("PIC resource " + number + " isn't present!");
+        }
+        return loadPic(number, dirEntry);
+    }
+
+    protected PicResource loadPic(int number, DirEntry de) throws AGIException, ResourceNotPresentException {
+        final var resbytes = vmgr.getResource(de);
+        return new PicResource(resbytes);
+    }
+
+    @Override
     public WordsResource loadWords() throws AGIException {
         try {
             final var wordsTok = Files.readAllBytes(gamePath.resolve("WORDS.TOK"));
