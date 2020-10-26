@@ -26,7 +26,7 @@ import org.rwtodd.agi.resources.BufferedImagePicHandler;
 public class Cmd {
 
     public static void main(String[] args) {
-        //args = new String[] { "--pics", "-dH:\\game\\kings-quest-2" }; // TEST!
+        //args = new String[] { "-r82", "--pics", "-dH:\\game\\kings-quest-3" }; // TEST!
         try {
             final var efp = new ExistingFileParam("dir", 'd', "directory", "Which directory to be in.");
             final var doCSound = new FlagParam("csound", ' ', "write csound scores for all sounds.");
@@ -34,11 +34,11 @@ public class Cmd {
             final var doObjects = new FlagParam("objects", ' ', "write out the OBJECTS resources");
             final var doPics = new FlagParam("pics", ' ', "write GIFs of the PIC resources");
             final var picScale = new IntParam("picscale", ' ', "FACTOR", "How much to scale the image up", 3);
-            
+            final var doOne = new IntParam("resource", 'r', "NUMBER", "Just extract the given resource", null);
             WordDictionaryHandler wordDictionary = null; // may or may not load the words...
             ObjectDictionaryHandler objectDictionary = null;    // may or may not load the objects....
 
-            var parser = new Parser(efp, doCSound, doWords, doObjects, doPics, picScale, new HelpParam());
+            var parser = new Parser(efp, doCSound, doWords, doObjects, doPics, picScale, doOne, new HelpParam());
             parser.parse(args);
             if (efp.getValue() == null) {
                 parser.requestHelp();
@@ -88,9 +88,13 @@ public class Cmd {
                 if (doObjects.getValue()) {
                     runObjectsDescription(objectDictionary);
                 }
-                
+
                 if (doPics.getValue()) {
-                    runPics(resloader, picScale.getValue());
+                    if (doOne.getValue() == null) {
+                        runPics(resloader, picScale.getValue());
+                    } else {
+                        runOnePic(doOne.getValue(), resloader, picScale.getValue());
+                    }
                 }
             }
         } catch (CommandLineException cle) {
@@ -182,36 +186,41 @@ public class Cmd {
         }
     }
 
-    private static void runPics(final ResourceLoader resloader, int scaleFactor) throws AGIException {
+    private static void runOnePic(final int number, final ResourceLoader resloader, int scaleFactor) {
+        try {
+            System.out.println("Loading PIC " + number);
+            final var res = resloader.loadPic(number);
+//            final var handler = new LoggingImageHandler();
+            final var handler = new BufferedImagePicHandler();
+            res.streamToHandler(handler);
+            final var img = handler.getPictureImage();
+            final int scaledWidth = img.getWidth() * 2 * scaleFactor; // *2 because of 160 width originals
+            final int scaledHeight = img.getHeight() * 6 / 5 * scaleFactor; // 6/5 aspect ratio correction
+            final var scaledImg = new BufferedImage(scaledWidth, scaledHeight, BufferedImage.TYPE_INT_ARGB);
+            AffineTransform scaleInstance = AffineTransform.getScaleInstance(2.0 * scaleFactor, scaleFactor * 6.0 / 5.0);
+            AffineTransformOp scaleOp = new AffineTransformOp(scaleInstance, AffineTransformOp.TYPE_NEAREST_NEIGHBOR);
+            scaleOp.filter(img, scaledImg);
+            javax.imageio.ImageIO.write(
+                    scaledImg, "GIF",
+                    Paths.get(String.format("pic_%03d.gif", number)).toFile());
+            final var scaledPrio = new BufferedImage(scaledWidth, scaledHeight, BufferedImage.TYPE_INT_ARGB);
+            scaleOp.filter(handler.getPriorityImage(), scaledPrio);
+            javax.imageio.ImageIO.write(
+                    scaledPrio, "GIF",
+                    Paths.get(String.format("prio_%03d.gif", number)).toFile());
+        } catch (IOException ioe) {
+            System.err.println("IO Error during PIC " + number + " " + ioe);
+        } catch (ResourceNotPresentException rnp) {
+            System.out.println("PIC " + number + " isn't in the resources.");
+        } catch (AGIException ae) {
+            describeException("ERROR:", ae);
+        }
+    }
+
+    private static void runPics(final ResourceLoader resloader, int scaleFactor) {
         // now dump all the pics...
         for (int i = 0; i < resloader.getPicCount(); ++i) {
-            try {
-                System.out.println("Loading PIC " + i);
-                final var res = resloader.loadPic(i);
-                final var handler = new BufferedImagePicHandler();
-                res.streamToHandler(handler);
-                final var img = handler.getPictureImage();
-                final int scaledWidth = img.getWidth()*2*scaleFactor; // *2 because of 160 width originals
-                final int scaledHeight = img.getHeight()*6/5*scaleFactor; // 6/5 aspect ratio correction
-                final var scaledImg = new BufferedImage(scaledWidth, scaledHeight, BufferedImage.TYPE_INT_ARGB);
-                AffineTransform scaleInstance = AffineTransform.getScaleInstance(2.0*scaleFactor, scaleFactor*6.0/5.0);
-                AffineTransformOp scaleOp = new AffineTransformOp(scaleInstance, AffineTransformOp.TYPE_NEAREST_NEIGHBOR);
-                scaleOp.filter(img, scaledImg);
-                javax.imageio.ImageIO.write(
-                        scaledImg, "GIF",
-                        Paths.get(String.format("pic_%03d.gif", i)).toFile());
-                final var scaledPrio = new BufferedImage(scaledWidth, scaledHeight, BufferedImage.TYPE_INT_ARGB);
-                scaleOp.filter(handler.getPriorityImage(), scaledPrio);
-                javax.imageio.ImageIO.write(
-                        scaledPrio, "GIF",
-                        Paths.get(String.format("prio_%03d.gif", i)).toFile());
-            } catch (IOException ioe) {
-                System.err.println("IO Error during PIC " + i + " " + ioe);
-            } catch (ResourceNotPresentException rnp) {
-                System.out.println("PIC " + i + " isn't in the resources.");
-            } catch (AGIException ae) {
-                describeException("ERROR:", ae);
-            }
+            runOnePic(i, resloader, scaleFactor);
         }
     }
 }

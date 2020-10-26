@@ -1,7 +1,5 @@
 package org.rwtodd.agi.resources;
 
-import java.awt.Color;
-
 /**
  * Represents the AGI Picture (background). It does minimal interpretation and
  * validation of the resource, and works with a client-provided Handler to build
@@ -122,9 +120,14 @@ public class PicResource {
     private int drawCorners(final Handler h, int picColor, int priColor, boolean changeY, int idx) {
         // first, we get the start coords...
         int x = data[idx++] & 0xff;
+        if((x & 0xf0) == 0xf0) return idx-1;
         int y = data[idx++] & 0xff;
+        if((y & 0xf0) == 0xf0) return idx-1;
+        
         int x2 = x;
         int y2 = y;
+
+        h.plotPoint(x, y, picColor, priColor);
         
         // now, read corners and update....
         int nextCoord = data[idx] & 0xff;
@@ -146,8 +149,12 @@ public class PicResource {
     private int drawLines(Handler h, int picColor, int priColor, int idx) {
         // first, we get the start coords...
         int x = data[idx++] & 0xff;
+        if((x & 0xf0) == 0xf0) return idx-1;
         int y = data[idx++] & 0xff;
+        if((y & 0xf0) == 0xf0) return idx-1;
        
+        h.plotPoint(x, y, picColor, priColor);
+        
         // now, read endpoints and draw....
         while ((data[idx] & 0xf0) != 0xf0) {
             int x2 = data[idx++] & 0xff;
@@ -162,8 +169,12 @@ public class PicResource {
     private int drawRelativeLines(Handler h, int picColor, int priColor, int idx) {
         // first, we get the start coords...
         int x = data[idx++] & 0xff;
+        if((x & 0xf0) == 0xf0) return idx-1;
         int y = data[idx++] & 0xff;
+        if((y & 0xf0) == 0xf0) return idx-1;
 
+        h.plotPoint(x, y, picColor, priColor);
+        
         // now, read relative moves
         int relmove = data[idx] & 0xff;
         while ((relmove & 0xf0) != 0xf0) {
