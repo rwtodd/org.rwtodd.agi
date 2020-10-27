@@ -1,9 +1,13 @@
 package org.rwtodd.agi.resources;
 
+import java.awt.geom.AffineTransform;
+import java.awt.image.AffineTransformOp;
 import java.awt.image.BufferedImage;
 import java.awt.image.IndexColorModel;
 import java.awt.image.Raster;
 import java.awt.image.WritableRaster;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 
@@ -96,7 +100,7 @@ public class BufferedImagePicHandler implements PicResource.Handler {
         }
         int x = x1, y = y1;
         plotPoint(x, y, picColor, priColor);
-        while(i-- > 0) {
+        while (i-- > 0) {
             errY += height;
             if (errY >= threshold) {
                 errY -= threshold;
@@ -179,7 +183,6 @@ public class BufferedImagePicHandler implements PicResource.Handler {
 //            p = queue.pollLast();
 //        }
 //    }
-
     @Override
     public void fill(int x, int y, int picColor, int priColor) {
         Raster rasterCheck;
@@ -235,4 +238,28 @@ public class BufferedImagePicHandler implements PicResource.Handler {
         priRaster = null;
     }
 
+    private void writeGIF(final Path imgPath, final BufferedImage img, int scaleFactor) throws AGIException {
+        try {
+            final int scaledWidth = img.getWidth() * 2 * scaleFactor; // *2 because of 160 width originals
+            final int scaledHeight = img.getHeight() * 6 / 5 * scaleFactor; // 6/5 aspect ratio correction
+            //final var scaledImg = new BufferedImage(scaledWidth, scaledHeight, BufferedImage.TYPE_INT_ARGB);
+            final var scaledImg = new BufferedImage(scaledWidth, scaledHeight, img.getType(), (IndexColorModel) img.getColorModel());
+            AffineTransform scaleInstance = AffineTransform.getScaleInstance(2.0 * scaleFactor, scaleFactor * 6.0 / 5.0);
+            AffineTransformOp scaleOp = new AffineTransformOp(scaleInstance, AffineTransformOp.TYPE_NEAREST_NEIGHBOR);
+            scaleOp.filter(img, scaledImg);
+            javax.imageio.ImageIO.write(
+                    scaledImg, "GIF",
+                    imgPath.toFile());
+        } catch (Exception e) {
+            throw new AGIException("Error writing GIF", e);
+        }
+    }
+
+    public void writeImageToGIF(Path imgPath, int scale) throws AGIException {
+        writeGIF(imgPath, pictureImage, scale);
+    }
+
+    public void writePriorityToGIF(Path imgPath, int scale) throws AGIException {
+        writeGIF(imgPath, priorityImage, scale);
+    }
 }

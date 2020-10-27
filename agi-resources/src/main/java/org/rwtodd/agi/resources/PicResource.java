@@ -46,7 +46,7 @@ public class PicResource {
         void line(int x1, int y1, int x2, int y2, int picColor, int priColor);
 
         //0xF8: Fill.
-        void fill(int x, int y,  int picColor, int priColor);
+        void fill(int x, int y, int picColor, int priColor);
 
         //0xF9: Change pen size and style.
         //0xFA: Plot with pen.
@@ -74,11 +74,11 @@ public class PicResource {
             while (idx < data.length) {
                 switch (data[idx++] & 0xff) {
                     case 0xf0 ->
-                        picColor = (data[idx++]&0xff);
+                        picColor = (data[idx++] & 0xff);
                     case 0xf1 ->
                         picColor = -1;
                     case 0xf2 ->
-                        priColor = (data[idx++]&0xff);
+                        priColor = (data[idx++] & 0xff);
                     case 0xf3 ->
                         priColor = -1;
                     case 0xf4 ->
@@ -93,12 +93,8 @@ public class PicResource {
                         idx = drawFill(h, picColor, priColor, idx);
                     case 0xf9 ->
                         ++idx;  // TODO: actually implement
-                    case 0xfa -> {
-                        // TODO: actually implement
-                        while ((data[idx] & 0xf0) != 0xf0) {
-                            ++idx;
-                        }
-                    }
+                    case 0xfa ->
+                        idx = drawPen(h, picColor, priColor, idx);
                     case 0xff -> {
                         if (idx != data.length) {
                             throw new AGIException("Extraneous data after end of PIC!");
@@ -120,28 +116,37 @@ public class PicResource {
     private int drawCorners(final Handler h, int picColor, int priColor, boolean changeY, int idx) {
         // first, we get the start coords...
         int x = data[idx++] & 0xff;
-        if((x & 0xf0) == 0xf0) return idx-1;
+        if (x >= 0xf0) {
+            return idx - 1;
+        }
         int y = data[idx++] & 0xff;
-        if((y & 0xf0) == 0xf0) return idx-1;
-        
+        if (y >= 0xf0) {
+            return idx - 1;
+        }
+
         int x2 = x;
         int y2 = y;
+        boolean drewLine = false;
 
-        h.plotPoint(x, y, picColor, priColor);
-        
         // now, read corners and update....
         int nextCoord = data[idx] & 0xff;
-        while ((nextCoord & 0xf0) != 0xf0) {
+        while (nextCoord < 0xf0) {
             if (changeY) {
                 y2 = nextCoord;
             } else {
                 x2 = nextCoord;
             }
             h.line(x, y, x2, y2, picColor, priColor);
+            drewLine = true;
             changeY = !changeY;
             x = x2;
             y = y2;
             nextCoord = data[++idx] & 0xff;
+        }
+
+        // if no lines were specified, at least draw the initial point.
+        if (!drewLine) {
+            h.plotPoint(x, y, picColor, priColor);
         }
         return idx;
     }
@@ -149,52 +154,102 @@ public class PicResource {
     private int drawLines(Handler h, int picColor, int priColor, int idx) {
         // first, we get the start coords...
         int x = data[idx++] & 0xff;
-        if((x & 0xf0) == 0xf0) return idx-1;
+        if (x >= 0xf0) {
+            return idx - 1;
+        }
         int y = data[idx++] & 0xff;
-        if((y & 0xf0) == 0xf0) return idx-1;
-       
-        h.plotPoint(x, y, picColor, priColor);
-        
+        if (y >= 0xf0) {
+            return idx - 1;
+        }
+        boolean drewLine = false;
+
         // now, read endpoints and draw....
-        while ((data[idx] & 0xf0) != 0xf0) {
-            int x2 = data[idx++] & 0xff;
-            int y2 = data[idx++] & 0xff;
+        while (true) {
+            final int x2 = data[idx++] & 0xff;
+            if(x2 >= 0xf0) { --idx; break; }
+            final int y2 = data[idx++] & 0xff;
+            if(y2 >= 0xf0) { --idx; break; }
             h.line(x, y, x2, y2, picColor, priColor);
+            drewLine = true;
             x = x2;
             y = y2;
+        }
+
+        // if no lines were specified, at least draw the initial point.
+        if (!drewLine) {
+            h.plotPoint(x, y, picColor, priColor);
         }
         return idx;
     }
 
     private int drawRelativeLines(Handler h, int picColor, int priColor, int idx) {
         // first, we get the start coords...
+        boolean drewLine = false;
         int x = data[idx++] & 0xff;
-        if((x & 0xf0) == 0xf0) return idx-1;
+        if (x >= 0xf0) {
+            return idx - 1;
+        }
         int y = data[idx++] & 0xff;
-        if((y & 0xf0) == 0xf0) return idx-1;
+        if (y >= 0xf0) {
+            return idx - 1;
+        }
 
-        h.plotPoint(x, y, picColor, priColor);
-        
         // now, read relative moves
         int relmove = data[idx] & 0xff;
-        while ((relmove & 0xf0) != 0xf0) {
-            int x2 = x + (((relmove & 0x80) == 0x80) ? -1 : 1) * ((relmove >> 4) & 0x7);
-            int y2 = y + (((relmove & 0x08) == 0x08) ? -1 : 1) * (relmove & 0x7);
+        while (relmove < 0xf0) {
+            final int x2 = x + (((relmove & 0x80) == 0x80) ? -1 : 1) * ((relmove >> 4) & 0x7);
+            final int y2 = y + (((relmove & 0x08) == 0x08) ? -1 : 1) * (relmove & 0x7);
             h.line(x, y, x2, y2, picColor, priColor);
             relmove = data[++idx] & 0xff;
+            drewLine = true;
             x = x2;
             y = y2;
+        }
+
+        // if no lines were specified, at least draw the initial point.
+        if (!drewLine) {
+            h.plotPoint(x, y, picColor, priColor);
         }
         return idx;
     }
 
     private int drawFill(Handler h, int picColor, int priColor, int idx) {
         // read points and fill...
-        while ((data[idx] & 0xf0) != 0xf0) {
-            int x = data[idx++] & 0xff;
-            int y = data[idx++] & 0xff;
+        while(true) {
+            final int x = data[idx++] & 0xff;
+            if(x >= 0xf0) {
+                --idx;
+                break;
+            }
+            final int y = data[idx++] & 0xff;
+            if(y >= 0xf0) {
+                --idx;
+                break;
+            }
             h.fill(x, y, picColor, priColor);
         }
         return idx;
     }
+
+    //TODO handle various AGI pens... for not just plot points.
+    private int drawPen(Handler h, int picColor, int priColor, int idx) {
+        // read points and fill...
+        while(true) {
+            final int x = data[idx++] & 0xff;
+            if(x >= 0xf0) {
+                --idx;
+                break;
+            }
+            final int y = data[idx++] & 0xff;
+            if(y >= 0xf0) {
+                --idx;
+                break;
+            }
+            if((x >= 160)||(y >= 168)) continue;
+            
+            h.plotPoint(x, y, picColor, priColor);
+        }
+        return idx;
+    }
+
 }
