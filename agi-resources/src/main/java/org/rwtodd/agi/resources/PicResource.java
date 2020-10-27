@@ -31,6 +31,8 @@ public class PicResource {
         (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff
     };
 
+    static final java.awt.Dimension PIC_DIMENSIONS = new java.awt.Dimension(160, 168);
+    
     public static interface Handler {
 
         void startPicture(int sizeX, int sizeY, int picColor, int priColor);
@@ -57,10 +59,15 @@ public class PicResource {
 
     }
 
-    private final byte[] data;
+    private final byte[] data; /* the resource data bytes */
 
+    private PicPen currentPen; /* the current pen */
+    private PenPattern currentPattern; /* the current plot pattern */
+    
     public PicResource(final byte[] src) {
         data = src;
+        currentPen = new RectanglePen(0);
+        currentPattern = new SolidPenPattern();
     }
 
     public void streamToHandler(final Handler h) throws AGIException {
@@ -68,7 +75,7 @@ public class PicResource {
             int picColor = -1; // -1 means nothing
             int priColor = -1; // -1 means nothing
 
-            h.startPicture(160, 168 /* NOT 200! */, 15, 4);
+            h.startPicture(PIC_DIMENSIONS.width, PIC_DIMENSIONS.height, 15, 4);
 
             int idx = 0;
             while (idx < data.length) {
@@ -92,7 +99,7 @@ public class PicResource {
                     case 0xf8 ->
                         idx = drawFill(h, picColor, priColor, idx);
                     case 0xf9 ->
-                        ++idx;  // TODO: actually implement
+                        idx = getPen(idx);
                     case 0xfa ->
                         idx = drawPen(h, picColor, priColor, idx);
                     case 0xff -> {
@@ -231,10 +238,26 @@ public class PicResource {
         return idx;
     }
 
-    //TODO handle various AGI pens... for not just plot points.
+    
+    private int getPen(int idx) {
+        final int arg = data[idx++] & 0xff;
+        final int size = arg & 0x7;
+        currentPen =  ((arg&0x10)==0) ? new CirclePen(size) : new RectanglePen(size);
+        currentPattern = ((arg&0x20)==0) ? new SolidPenPattern() : new SplatterPattern();
+        return idx;
+    }
+    
     private int drawPen(Handler h, int picColor, int priColor, int idx) {
         // read points and fill...
         while(true) {
+            if(currentPattern.takesArgument()) {
+                final int pattNumber = data[idx++] & 0xff;
+                if(pattNumber >= 0xf0) {
+                    --idx;
+                    break;
+                }
+                currentPattern.setPattern(pattNumber >> 1);
+            }
             final int x = data[idx++] & 0xff;
             if(x >= 0xf0) {
                 --idx;
@@ -245,9 +268,7 @@ public class PicResource {
                 --idx;
                 break;
             }
-            if((x >= 160)||(y >= 168)) continue;
-            
-            h.plotPoint(x, y, picColor, priColor);
+            currentPen.drawAt(h, x, y, picColor, priColor, currentPattern);
         }
         return idx;
     }

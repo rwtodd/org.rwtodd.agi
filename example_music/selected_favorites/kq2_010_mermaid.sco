@@ -1,79 +1,74 @@
-; This is '.', sound resource #10 of length 54.299999
+;; AGI Sound Resource 10 (Volume 0 Offset 42974)
 
-; orchestra is expected to have equivalents for
-; PCJr/Tandy 3-voice sounds:
-; Instrument 11-13 for the main voice (square wave)
-; Instrument 21 for white noise
-; Instrument 31 for 'linear noise'
-; Instrument 99 for mixing/reverb
-t 0 360  ; 1/6th second, aligns with AGI timing of 1/60th second
+
+t 0 3600 ;; AGI runs in 1/60th second ticks
 
 ; set up the instruments
-i 1  0    0  1  0 48 ;; strings (0 46 ;; harp also works)
-i 1  0    0  2  0 48 ;; strings (0 46 ;; harp also works)
-i 1  0    0  3  0 48 ;; strings (0 46 ;; harp also works)
+i 1  0  0  1   0 48   ;; 48 strings
+i 1  0  0  2   0 48   ;; 48 strings
+i 1  0  0  3   0 48   ;; 48 strings
 
 ; set up the panning
-i 2  0  0  1 0.5
-i 2  0  0  2 0.7
-i 2  0  0  3 0.3
-
-; Set the reverb for 1 second longer than the song
-;   				reverb	gain	gain
-; 99	start	dur	depth	Start	End
-i 99	0	60.300	0.9	1.0	1.0
+i 2  0  0  1 0.5     ;; middle
+i 2  0  0  2 0.7     ;; right
+i 2  0  0  3 0.3     ;; left
 
 
-; ****  Voice 1
-; 11	time	dur	db	freq	pan
-i 11	0.000	1.20	-20	1016.916199	
-i 11	+	1.20	-20	1075.584473	
-i 11	+	1.20	-20	1016.916199	
-i 11	+	3.60	-20	804.753845	
-i 11	+	3.60	-20	677.944153	
-i 11	+	1.20	-20	909.437256	
-i 11	+	1.20	-20	964.317078	
-i 11	+	1.20	-20	909.437256	
-i 11	+	3.60	-20	717.056274	
-i 11	+	3.60	-20	604.652893	
-i 11	+	1.20	-20	804.753845	
-i 11	+	1.20	-20	853.899109	
-i 11	+	1.20	-20	804.753845	
-i 11	+	3.60	-20	639.204468	
-i 11	+	3.60	-20	537.792236	
-i 11	+	1.80	-20	604.652893	
-i 11	+	1.80	-20	677.944153	
-i 11	+	3.60	-20	717.056274	
-i 11	+	3.60	-20	604.652893	
-i 11	+	11.10	-20	677.944153	
+;; Start of voice 1 (instrument 11)
+;;	start	dur	level	freq
+i11	0	12	0	110
+i11	12	12	0	104
+i11	24	12	0	110
+i11	36	36	0	139
+i11	72	36	0	165
+i11	108	12	0	123
+i11	120	12	0	116
+i11	132	12	0	123
+i11	144	36	0	156
+i11	180	36	0	185
+i11	216	12	0	139
+i11	228	12	0	131
+i11	240	12	0	139
+i11	252	36	0	175
+i11	288	36	0	208
+i11	324	18	0	185
+i11	342	18	0	165
+i11	360	36	0	156
+i11	396	36	0	185
+i11	432	111	0	165
+;; End of instrument 11
 
+;; Start of voice 2 (instrument 12)
+;;	start	dur	level	freq
+i12	0	36	0	165
+i12	36	36	0	220
+i12	72	36	0	278
+i12	108	36	0	185
+i12	144	36	0	247
+i12	180	36	0	312
+i12	216	36	0	208
+i12	252	36	0	278
+i12	288	36	0	350
+i12	324	72	0	208
+i12	396	36	0	220
+i12	432	111	0	220
+;; End of instrument 12
 
-; ****  Voice 2
-; 12	time	dur	db	freq	pan
-i 12	0.000	3.60	-20	677.944153	
-i 12	+	3.60	-20	508.458099	
-i 12	+	3.60	-20	402.376923	
-i 12	+	3.60	-20	604.652893	
-i 12	+	3.60	-20	452.877655	
-i 12	+	3.60	-20	358.528137	
-i 12	+	3.60	-20	537.792236	
-i 12	+	3.60	-20	402.376923	
-i 12	+	3.60	-20	319.602234	
-i 12	+	7.20	-20	537.792236	
-i 12	+	3.60	-20	508.458099	
-i 12	+	11.10	-20	508.458099	
+;; Start of voice 3 (instrument 13)
+;;	start	dur	level	freq
+i13	0	108	0	416
+i13	108	108	0	467
+i13	216	108	0	525
+i13	324	36	0	312
+i13	360	36	0	278
+i13	396	36	0	556
+i13	432	111	0	416
+;; End of instrument 13
 
+;; Start of noise channel (instrument 21 an 31)
+;;	start	dur	level	freq
+;; End of noise channel
 
-; ****  Voice 3
-; 13	time	dur	db	freq	pan
-i 13	0.000	10.80	-20	268.896118	
-i 13	+	10.80	-20	239.530579	
-i 13	+	10.80	-20	213.068161	
-i 13	+	3.60	-20	358.528137	
-i 13	+	3.60	-20	402.376923	
-i 13	+	3.60	-20	201.188461	
-i 13	+	11.10	-20	268.896118	
-
-
-; ****  Voice 4 (Noise)
-;  	time	dur	db	freq
+;; mixer
+;;	start	dur	rev	lvl1	lvl2
+i99	0	603	0.9	1.0	1.0

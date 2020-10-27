@@ -20,8 +20,8 @@ public class V3ResourceDirectory implements ResourceDirectory {
         try {
             dir = Files.readAllBytes(gamePath.resolve(prefix + "DIR"));
             logicOffs = (dir[0] & 0xff) | ((dir[1] & 0xff) << 8);
-            viewOffs = (dir[2] & 0xff) | ((dir[3] & 0xff) << 8);
-            picOffs = (dir[4] & 0xff) | ((dir[5] & 0xff) << 8);
+            picOffs = (dir[2] & 0xff) | ((dir[3] & 0xff) << 8);
+            viewOffs = (dir[4] & 0xff) | ((dir[5] & 0xff) << 8);
             soundOffs = (dir[6] & 0xff) | ((dir[7] & 0xff) << 8);
         } catch (Throwable tr) {
             throw new AGIException("Could not load resource directory!", tr);
@@ -35,17 +35,17 @@ public class V3ResourceDirectory implements ResourceDirectory {
 
     @Override
     public int getPicCount() {
-        return (soundOffs - picOffs) / 3;
+        return (viewOffs - picOffs) / 3;
     }
 
     @Override
     public int getViewCount() {
-        return (picOffs - viewOffs) / 3;
+        return (soundOffs - viewOffs) / 3;
     }
 
     @Override
     public int getLogicCount() {
-        return (viewOffs - logicOffs) / 3;
+        return (picOffs - logicOffs) / 3;
     }
 
     @Override

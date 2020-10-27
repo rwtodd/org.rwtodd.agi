@@ -1,7 +1,5 @@
 package org.rwtodd.agi.extractor;
 
-import java.awt.geom.AffineTransform;
-import java.awt.image.AffineTransformOp;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
@@ -15,7 +13,6 @@ import org.rwtodd.agi.resources.ResourceNotPresentException;
 import org.rwtodd.agi.resources.VolumeManager;
 import org.rwtodd.args.*;
 import java.util.Map.Entry;
-import java.awt.image.BufferedImage;
 import org.rwtodd.agi.resources.BufferedImagePicHandler;
 
 /**
@@ -26,7 +23,7 @@ import org.rwtodd.agi.resources.BufferedImagePicHandler;
 public class Cmd {
 
     public static void main(String[] args) {
-        // args = new String[] { "-dh:\\game\\kings-quest-1-redux", "--pics", "-vr83" };
+        //args = new String[] { "-dh:\\game\\goldrush", "--pics" };
         try {
             final var efp = new ExistingFileParam("dir", 'd', "directory", "Which directory to be in.");
             final var doCSound = new FlagParam("csound", ' ', "write csound scores for all sounds.");
