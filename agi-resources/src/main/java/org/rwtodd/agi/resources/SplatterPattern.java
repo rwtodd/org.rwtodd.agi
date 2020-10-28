@@ -12,11 +12,30 @@ public class SplatterPattern implements PenPattern {
 
     private int startIndex; /* the start index into SPLATTER */
 
+//   the AGI docs say the bit patterns are:
+//   (byte) 0x20, (byte) 0x94, (byte) 0x02, (byte) 0x24, (byte) 0x90, (byte) 0x82, (byte) 0xa4, (byte) 0xa2,
+//   (byte) 0x82, (byte) 0x09, (byte) 0x0a, (byte) 0x22, (byte) 0x12, (byte) 0x10, (byte) 0x42, (byte) 0x14,
+//   (byte) 0x91, (byte) 0x4a, (byte) 0x91, (byte) 0x11, (byte) 0x08, (byte) 0x12, (byte) 0x25, (byte) 0x10,
+//   (byte) 0x22, (byte) 0xa8, (byte) 0x14, (byte) 0x24, (byte) 0x00, (byte) 0x50, (byte) 0x24, (byte) 0x04
+//   however, the BitSet.valueOf interprets the bits of each byte from bit 0 to bit 7, instead of bit 7 to bit 0.
+// So I used the following function:
+// byte reverseBits(byte input) {
+//        int bit1 = ((input & 0x80)>>7);
+//       int bit2 = ((input & 0x40)>>5);
+//      int bit3 = ((input & 0x20)>>3);
+//     int bit4 = ((input & 0x10)>>1);
+//      int bit5 = ((input & 0x08)<<1);
+//     int bit6 = ((input & 0x04)<<3);
+//       int bit7 = ((input & 0x02)<<5);
+//      int bit8 = ((input & 0x01)<<7);
+//    return (byte)(bit1|bit2|bit3|bit4|bit5|bit6|bit7|bit8);
+//  }    
+// to reverse the bits below:
     private static final BitSet SPLATTER = BitSet.valueOf(new byte[]{
-        (byte) 0x20, (byte) 0x94, (byte) 0x02, (byte) 0x24, (byte) 0x90, (byte) 0x82, (byte) 0xa4, (byte) 0xa2,
-        (byte) 0x82, (byte) 0x09, (byte) 0x0a, (byte) 0x22, (byte) 0x12, (byte) 0x10, (byte) 0x42, (byte) 0x14,
-        (byte) 0x91, (byte) 0x4a, (byte) 0x91, (byte) 0x11, (byte) 0x08, (byte) 0x12, (byte) 0x25, (byte) 0x10,
-        (byte) 0x22, (byte) 0xa8, (byte) 0x14, (byte) 0x24, (byte) 0x00, (byte) 0x50, (byte) 0x24, (byte) 0x04
+        4, 41, 64, 36, 9, 65, 37, 69, 
+        65, -112, 80, 68, 72, 8, 66, 40, 
+        -119, 82, -119, -120, 16, 72, -92, 8, 
+        68, 21, 40, 36, 0, 10, 36, 32
     });
 
     /* 128 starting values in the above BitSet */

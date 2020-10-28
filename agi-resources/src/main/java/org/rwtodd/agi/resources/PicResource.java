@@ -32,7 +32,7 @@ public class PicResource {
     };
 
     static final java.awt.Dimension PIC_DIMENSIONS = new java.awt.Dimension(160, 168);
-    
+
     public static interface Handler {
 
         void startPicture(int sizeX, int sizeY, int picColor, int priColor);
@@ -59,11 +59,15 @@ public class PicResource {
 
     }
 
-    private final byte[] data; /* the resource data bytes */
+    private final byte[] data;
+    /* the resource data bytes */
 
-    private PicPen currentPen; /* the current pen */
-    private PenPattern currentPattern; /* the current plot pattern */
-    
+    private PicPen currentPen;
+    /* the current pen */
+    private PenPattern currentPattern;
+
+    /* the current plot pattern */
+
     public PicResource(final byte[] src) {
         data = src;
         currentPen = new RectanglePen(0);
@@ -130,6 +134,8 @@ public class PicResource {
         if (y >= 0xf0) {
             return idx - 1;
         }
+        x = clipX(x);
+        y = clipY(y);
 
         int x2 = x;
         int y2 = y;
@@ -139,9 +145,9 @@ public class PicResource {
         int nextCoord = data[idx] & 0xff;
         while (nextCoord < 0xf0) {
             if (changeY) {
-                y2 = nextCoord;
+                y2 = clipY(nextCoord);
             } else {
-                x2 = nextCoord;
+                x2 = clipX(nextCoord);
             }
             h.line(x, y, x2, y2, picColor, priColor);
             drewLine = true;
@@ -164,18 +170,29 @@ public class PicResource {
         if (x >= 0xf0) {
             return idx - 1;
         }
+        x = clipX(x);
+
         int y = data[idx++] & 0xff;
         if (y >= 0xf0) {
             return idx - 1;
         }
         boolean drewLine = false;
+        y = clipY(y);
 
         // now, read endpoints and draw....
         while (true) {
-            final int x2 = data[idx++] & 0xff;
-            if(x2 >= 0xf0) { --idx; break; }
-            final int y2 = data[idx++] & 0xff;
-            if(y2 >= 0xf0) { --idx; break; }
+            int x2 = data[idx++] & 0xff;
+            if (x2 >= 0xf0) {
+                --idx;
+                break;
+            }
+            x2 = clipX(x2);
+            int y2 = data[idx++] & 0xff;
+            if (y2 >= 0xf0) {
+                --idx;
+                break;
+            }
+            y2 = clipY(y2);
             h.line(x, y, x2, y2, picColor, priColor);
             drewLine = true;
             x = x2;
@@ -196,16 +213,19 @@ public class PicResource {
         if (x >= 0xf0) {
             return idx - 1;
         }
+        x = clipX(x);
+
         int y = data[idx++] & 0xff;
         if (y >= 0xf0) {
             return idx - 1;
         }
+        y = clipY(y);
 
         // now, read relative moves
         int relmove = data[idx] & 0xff;
         while (relmove < 0xf0) {
-            final int x2 = x + (((relmove & 0x80) == 0x80) ? -1 : 1) * ((relmove >> 4) & 0x7);
-            final int y2 = y + (((relmove & 0x08) == 0x08) ? -1 : 1) * (relmove & 0x7);
+            final int x2 = clipX(x + (((relmove & 0x80) == 0x80) ? -1 : 1) * ((relmove >> 4) & 0x7));
+            final int y2 = clipY(y + (((relmove & 0x08) == 0x08) ? -1 : 1) * (relmove & 0x7));
             h.line(x, y, x2, y2, picColor, priColor);
             relmove = data[++idx] & 0xff;
             drewLine = true;
@@ -222,49 +242,48 @@ public class PicResource {
 
     private int drawFill(Handler h, int picColor, int priColor, int idx) {
         // read points and fill...
-        while(true) {
+        while (true) {
             final int x = data[idx++] & 0xff;
-            if(x >= 0xf0) {
+            if (x >= 0xf0) {
                 --idx;
                 break;
             }
             final int y = data[idx++] & 0xff;
-            if(y >= 0xf0) {
+            if (y >= 0xf0) {
                 --idx;
                 break;
             }
-            h.fill(x, y, picColor, priColor);
+            h.fill(clipX(x), clipY(y), picColor, priColor);
         }
         return idx;
     }
 
-    
     private int getPen(int idx) {
         final int arg = data[idx++] & 0xff;
         final int size = arg & 0x7;
-        currentPen =  ((arg&0x10)==0) ? new CirclePen(size) : new RectanglePen(size);
-        currentPattern = ((arg&0x20)==0) ? new SolidPenPattern() : new SplatterPattern();
+        currentPen = ((arg & 0x10) == 0) ? new CirclePen(size) : new RectanglePen(size);
+        currentPattern = ((arg & 0x20) == 0) ? new SolidPenPattern() : new SplatterPattern();
         return idx;
     }
-    
+
     private int drawPen(Handler h, int picColor, int priColor, int idx) {
         // read points and fill...
-        while(true) {
-            if(currentPattern.takesArgument()) {
+        while (true) {
+            if (currentPattern.takesArgument()) {
                 final int pattNumber = data[idx++] & 0xff;
-                if(pattNumber >= 0xf0) {
+                if (pattNumber >= 0xf0) {
                     --idx;
                     break;
                 }
                 currentPattern.setPattern(pattNumber >> 1);
             }
             final int x = data[idx++] & 0xff;
-            if(x >= 0xf0) {
+            if (x >= 0xf0) {
                 --idx;
                 break;
             }
             final int y = data[idx++] & 0xff;
-            if(y >= 0xf0) {
+            if (y >= 0xf0) {
                 --idx;
                 break;
             }
@@ -273,4 +292,11 @@ public class PicResource {
         return idx;
     }
 
+    private int clipX(int x) {
+        return (x < 0) ? 0 : ((x >= PIC_DIMENSIONS.width) ? PIC_DIMENSIONS.width - 1 : x);
+    }
+
+    private int clipY(int y) {
+        return (y < 0) ? 0 : ((y >= PIC_DIMENSIONS.height) ? PIC_DIMENSIONS.height - 1 : y);
+    }
 }
