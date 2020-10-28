@@ -275,7 +275,7 @@ public class PicResource {
                     --idx;
                     break;
                 }
-                currentPattern.setPattern(pattNumber >> 1);
+                currentPattern.setPattern(pattNumber);
             }
             final int x = data[idx++] & 0xff;
             if (x >= 0xf0) {

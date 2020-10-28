@@ -23,7 +23,7 @@ import org.rwtodd.agi.resources.BufferedImagePicHandler;
 public class Cmd {
 
     public static void main(String[] args) {
-        //args = new String[] { "-dh:\\game\\goldrush", "--pics" };
+//        args = new String[] { "-dh:\\game\\kings-quest-4-agi", "--pics", "-r2" };
         try {
             final var efp = new ExistingFileParam("dir", 'd', "directory", "Which directory to be in.");
             final var doCSound = new FlagParam("csound", ' ', "write csound scores for all sounds.");
