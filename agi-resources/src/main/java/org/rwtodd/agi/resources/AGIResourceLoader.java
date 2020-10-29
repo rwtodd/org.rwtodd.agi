@@ -82,7 +82,9 @@ public class AGIResourceLoader implements ResourceLoader {
 
     protected PicResource loadPic(int number, DirEntry de) throws AGIException, ResourceNotPresentException {
         final var resbytes = vmgr.getResource(de);
-        return new PicResource(resbytes);
+        return (version > 2.9999)
+                ? new V3PicResource(resbytes)
+                : new PicResource(resbytes);
     }
 
     @Override

@@ -62,16 +62,14 @@ public class PicResource {
     private final byte[] data;
     /* the resource data bytes */
 
+ /* the current pen */
     private PicPen currentPen;
-    /* the current pen */
     private PenPattern currentPattern;
-
-    /* the current plot pattern */
 
     public PicResource(final byte[] src) {
         data = src;
         currentPen = new RectanglePen(0);
-        currentPattern = new SolidPenPattern();
+        currentPattern = SolidPenPattern.INSTANCE;
     }
 
     public void streamToHandler(final Handler h) throws AGIException {
@@ -258,11 +256,23 @@ public class PicResource {
         return idx;
     }
 
+    /**
+     * Create a circle pen appropriate for this resource. This protected method
+     * is meant for subclasses to adjust as needed.
+     *
+     * @param size the size level of the circle pen
+     * @return the generated pen
+     */
+    protected PicPen createCirclePen(int size) {
+        return new CirclePen(size);
+    }
+
     private int getPen(int idx) {
         final int arg = data[idx++] & 0xff;
         final int size = arg & 0x7;
-        currentPen = ((arg & 0x10) == 0) ? new CirclePen(size) : new RectanglePen(size);
-        currentPattern = ((arg & 0x20) == 0) ? new SolidPenPattern() : new SplatterPattern();
+
+        currentPen = ((arg & 0x10) == 0) ? createCirclePen(size) : new RectanglePen(size);
+        currentPattern = ((arg & 0x20) == 0) ? SolidPenPattern.INSTANCE : new SplatterPattern();
         return idx;
     }
 

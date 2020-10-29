@@ -3,11 +3,14 @@ package org.rwtodd.agi.resources;
 import java.util.Iterator;
 
 /**
- * A PenPattern that represents a solid fill.
+ * A PenPattern that represents a solid fill.  Since there is no variation or state in
+ * solid fills, an `enum` is used to create a single INSTANCE that all objects
+ * can share.
  * @author rwtodd
  */
-public class SolidPenPattern implements PenPattern, Iterator<Boolean> {
-
+public enum SolidPenPattern implements PenPattern, Iterator<Boolean> {
+    INSTANCE;
+    
     @Override
     public boolean hasNext() {
         return true;
