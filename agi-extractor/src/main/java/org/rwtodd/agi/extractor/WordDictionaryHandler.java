@@ -9,10 +9,10 @@ import java.util.Map.Entry;
 import java.util.stream.Stream;
 
 /**
- *
+ * A builder for a dictionary of AGI word resources.
  * @author rwtodd
  */
-public class WordDictionaryHandler implements WordsResource.Handler {
+public class WordDictionaryHandler implements WordsResource.Handler, WordDictionary {
     private final Map<String,Integer> wordMap;
     private final Map<Integer,List<String>> groupMap;
     
@@ -21,19 +21,23 @@ public class WordDictionaryHandler implements WordsResource.Handler {
         groupMap = new HashMap<>();
     }
     
+    @Override
     public int lookupWord(String word) {
         return wordMap.getOrDefault(word, -1);
     }
     
+    @Override
     public List<String> lookupGroup(int group) {
         final var list = groupMap.get(group);
         return (list==null)?List.of():list;
     }
 
+    @Override
     public Stream<Entry<String,Integer>> wordStream() {
         return wordMap.entrySet().stream();
     }
     
+    @Override
     public Stream<Entry<Integer,List<String>>> groupStream() {
         return groupMap.entrySet().stream();
     }

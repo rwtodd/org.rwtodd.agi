@@ -35,8 +35,8 @@ public class Cmd {
             final var doLogics = new FlagParam("logics", ' ', "write logic script resources");
             final var verboseFlag = new FlagParam("verbose", 'v', "Write debug messages where applicable.");
 
-            WordDictionaryHandler wordDictionary = null; // may or may not load the words...
-            ObjectDictionaryHandler objectDictionary = null;    // may or may not load the objects....
+            WordDictionary wordDictionary = null; // may or may not load the words...
+            ObjectDictionary objectDictionary = null;    // may or may not load the objects....
 
             var parser = new Parser(efp, doCSound, doWords, doObjects, doPics,
                     picScale, doLogics, doOne, verboseFlag, new HelpParam());
@@ -65,8 +65,9 @@ public class Cmd {
                 // there will eventually be other reasons (like LOGIC) to load words
                 if (doWords.getValue()) {
                     try {
-                        wordDictionary = new WordDictionaryHandler();
-                        resloader.loadWords().streamToHandler(wordDictionary);
+                        final var wdh = new WordDictionaryHandler();
+                        resloader.loadWords().streamToHandler(wdh);
+                        wordDictionary = wdh;
                     } catch (AGIException agi) {
                         describeException("Error loading words: ", agi);
                     }
@@ -79,8 +80,9 @@ public class Cmd {
                 // there will eventually be other reasons (like LOGIC) to load objects
                 if (doObjects.getValue()) {
                     try {
-                        objectDictionary = new ObjectDictionaryHandler();
-                        resloader.loadObjects().streamToHandler(objectDictionary);
+                        final var odh = new ObjectDictionaryHandler();
+                        resloader.loadObjects().streamToHandler(odh);
+                        objectDictionary = odh;
                     } catch (AGIException agi) {
                         describeException("Error loading objects: ", agi);
                     }
@@ -149,7 +151,7 @@ public class Cmd {
         }
     }
 
-    private static void runObjectsDescription(final ObjectDictionaryHandler objectDictionary) {
+    private static void runObjectsDescription(final ObjectDictionary objectDictionary) {
         try (
                 final var olist = new PrintWriter(
                         Files.newBufferedWriter(Paths.get("object_list.csv"), StandardCharsets.UTF_8))) {
@@ -164,7 +166,7 @@ public class Cmd {
         }
     }
 
-    private static void runWordDescription(final WordDictionaryHandler wordDictionary) {
+    private static void runWordDescription(final WordDictionary wordDictionary) {
         try (
                 final var wlist = new PrintWriter(
                         Files.newBufferedWriter(Paths.get("word_list.csv"), StandardCharsets.UTF_8))) {
@@ -225,8 +227,7 @@ public class Cmd {
             final var res = resloader.loadLogic(number);
             final var outPath = Paths.get(String.format("logic_%04d.txt", number));
 
-            try (final var writer = Files.newBufferedWriter(outPath); 
-                    final var pw = new PrintWriter(writer)) {
+            try (final var pw = new PrintWriter(Files.newBufferedWriter(outPath))) {
                 pw.printf("Logic Script %d\n", number);
                 pw.print("MESSAGES: ~~~~~~~~~~\n");
                 for (int msg = 0; msg < res.getMessageCount(); ++msg) {

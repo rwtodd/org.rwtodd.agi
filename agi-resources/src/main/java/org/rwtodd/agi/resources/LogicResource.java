@@ -16,13 +16,13 @@ public class LogicResource {
 
     public LogicResource(final byte[] src) {
         final var textArea = ((src[0] & 0xff) | ((src[1] & 0xff) << 8)) + 2;
-        final var msgCount = src[textArea]&0xff;
+        final var msgCount = src[textArea] & 0xff;
         scriptStrings = new String[msgCount];
         final var empty = "";
         var stringIndex = textArea + 1;
-        for(int n = 0; n < msgCount; ++n, stringIndex += 2) {
-            final var offset = ((src[stringIndex] & 0xff) | ((src[stringIndex+1] & 0xff) << 8));
-            if(offset != 0) {
+        for (int n = 0; n < msgCount; ++n, stringIndex += 2) {
+            final var offset = ((src[stringIndex] & 0xff) | ((src[stringIndex + 1] & 0xff) << 8));
+            if (offset != 0) {
                 scriptStrings[n] = Util.asciizString(src, textArea + offset + 1);
             } else {
                 scriptStrings[n] = empty;
@@ -30,9 +30,16 @@ public class LogicResource {
         }
         script = Arrays.copyOfRange(src, 2, textArea);
     }
-    
-    public String getMessage(int n) { return scriptStrings[n]; }
-    public int getMessageCount() { return scriptStrings.length; }
-    
-    public byte[] getByteCodes() { return script; }
+
+    public String getMessage(int n) {
+        return (n < scriptStrings.length) ? scriptStrings[n] : "";
+    }
+
+    public int getMessageCount() {
+        return scriptStrings.length;
+    }
+
+    public byte[] getByteCodes() {
+        return script;
+    }
 }

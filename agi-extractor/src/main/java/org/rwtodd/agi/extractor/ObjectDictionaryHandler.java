@@ -10,28 +10,10 @@ import org.rwtodd.agi.resources.ObjectsResource;
  * Builds a list of game objects as a handler for the ObjectsResource.
  * @author rwtodd
  */
-class ObjectDictionaryHandler implements ObjectsResource.Handler {
-    
-    static class Entry implements Comparable<Entry> {
-        private final String name;
-        private final int startingRoom;
-        
-        public Entry(String n, int sr) {
-            name = n;
-            startingRoom = sr;
-        }
-        
-        public String getName() { return name; }
-        public int getStartingRoom() { return startingRoom; }
-
-        @Override
-        public int compareTo(final Entry o) {
-            return name.compareTo(o.name);
-        }
-    }
-    
+class ObjectDictionaryHandler implements ObjectsResource.Handler, ObjectDictionary {
+  
     private int maxAnimated;
-    private List<Entry> objects;
+    private List<ObjectDictionary.Entry> objects;
     
     public ObjectDictionaryHandler() { 
         maxAnimated = -1;
@@ -45,7 +27,7 @@ class ObjectDictionaryHandler implements ObjectsResource.Handler {
 
     @Override
     public void object(int startingRoom, String name) {
-        objects.add(new Entry(name, startingRoom));
+        objects.add(new ObjectDictionary.Entry(name, startingRoom));
     }
 
     @Override
@@ -54,17 +36,12 @@ class ObjectDictionaryHandler implements ObjectsResource.Handler {
         objects = Collections.unmodifiableList(objects);
     }
     
-    public Entry get(int index) {
-        return objects.get(index);
-    }
     
-    public List<Entry> getObjects() {
+    @Override
+    public List<ObjectDictionary.Entry> getObjects() {
         return objects;
     }
-    
-    public Stream<Entry> objectStream() {
-        return objects.stream();
-    }
-    
+        
+    @Override
     public int getMaximumAnimated() { return maxAnimated; }
 }
