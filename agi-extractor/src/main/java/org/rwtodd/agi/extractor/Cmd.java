@@ -32,13 +32,14 @@ public class Cmd {
             final var doPics = new FlagParam("pics", ' ', "write GIFs of the PIC resources");
             final var picScale = new IntParam("picscale", ' ', "FACTOR", "How much to scale the image up", 3);
             final var doOne = new IntParam("resource", 'r', "NUMBER", "Just extract the given resource", null);
+            final var doLogics = new FlagParam("logics", ' ', "write logic script resources");
             final var verboseFlag = new FlagParam("verbose", 'v', "Write debug messages where applicable.");
 
             WordDictionaryHandler wordDictionary = null; // may or may not load the words...
             ObjectDictionaryHandler objectDictionary = null;    // may or may not load the objects....
 
             var parser = new Parser(efp, doCSound, doWords, doObjects, doPics,
-                    picScale, doOne, verboseFlag, new HelpParam());
+                    picScale, doLogics, doOne, verboseFlag, new HelpParam());
             parser.parse(args);
             if (efp.getValue() == null) {
                 parser.requestHelp();
@@ -94,6 +95,14 @@ public class Cmd {
                         runPics(resloader, picScale.getValue(), verboseFlag.getValue());
                     } else {
                         runOnePic(doOne.getValue(), resloader, picScale.getValue(), verboseFlag.getValue());
+                    }
+                }
+
+                if (doLogics.getValue()) {
+                    if (doOne.getValue() == null) {
+                        runLogics(resloader, verboseFlag.getValue());
+                    } else {
+                        runOneLogic(doOne.getValue(), resloader, verboseFlag.getValue());
                     }
                 }
             }
@@ -194,8 +203,8 @@ public class Cmd {
                     ? new LoggingImageHandler()
                     : new BufferedImagePicHandler();
             res.streamToHandler(handler);
-            handler.writeImageToGIF(Paths.get(String.format("pic_%03d.gif", number)),scaleFactor);
-            handler.writePriorityToGIF(Paths.get(String.format("prio_%03d.gif", number)),scaleFactor);
+            handler.writeImageToGIF(Paths.get(String.format("pic_%03d.gif", number)), scaleFactor);
+            handler.writePriorityToGIF(Paths.get(String.format("prio_%03d.gif", number)), scaleFactor);
         } catch (ResourceNotPresentException rnp) {
             System.out.println("PIC " + number + " isn't in the resources.");
         } catch (AGIException ae) {
@@ -207,6 +216,36 @@ public class Cmd {
         // now dump all the pics...
         for (int i = 0; i < resloader.getPicCount(); ++i) {
             runOnePic(i, resloader, scaleFactor, verbose);
+        }
+    }
+
+    private static void runOneLogic(final int number, final ResourceLoader resloader, boolean verbose) {
+        try {
+            System.out.println("Loading LOGIC " + number);
+            final var res = resloader.loadLogic(number);
+            final var outPath = Paths.get(String.format("logic_%04d.txt", number));
+
+            try (final var writer = Files.newBufferedWriter(outPath); 
+                    final var pw = new PrintWriter(writer)) {
+                pw.printf("Logic Script %d\n", number);
+                pw.print("MESSAGES: ~~~~~~~~~~\n");
+                for (int msg = 0; msg < res.getMessageCount(); ++msg) {
+                    pw.printf("%d: %s\n", msg, res.getMessage(msg));
+                }
+            }
+        } catch (IOException ioe) {
+            System.err.println(ioe);
+        } catch (ResourceNotPresentException rnp) {
+            System.out.println("PIC " + number + " isn't in the resources.");
+        } catch (AGIException ae) {
+            describeException("ERROR:", ae);
+        }
+    }
+
+    private static void runLogics(final ResourceLoader resloader, boolean verbose) {
+        // now dump all the lgoics...
+        for (int i = 0; i < resloader.getLogicCount(); ++i) {
+            runOneLogic(i, resloader, verbose);
         }
     }
 }

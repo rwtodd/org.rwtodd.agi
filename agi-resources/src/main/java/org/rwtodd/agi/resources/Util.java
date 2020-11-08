@@ -20,9 +20,9 @@ class Util {
      * @param src the source bytes (modified by this function)
      * @return the source bytes
      */
-    static byte[] decodeInPlace(final byte[] code, final byte[] src) {
+    static byte[] decodeInPlace(final byte[] code, final byte[] src, final int start, final int end) {
         int cIdx = 0;
-        for (int sIdx = 0; sIdx < src.length; ++sIdx) {
+        for (int sIdx = start; sIdx < end; ++sIdx) {
             src[sIdx] ^= code[cIdx];
             if (++cIdx == code.length) {
                 cIdx = 0;
@@ -36,10 +36,23 @@ class Util {
      * Durgan."
      *
      * @param src source bytes (modified in place)
+     * @param start where to start in `src`
+     * @param end where to stop in `src` (exclusive).
+     * @return the source bytes
+     */
+    static byte[] decodeInPlace(final byte[] src, final int start, final int end) {
+        return decodeInPlace(AVIS, src, start, end);
+    }
+    
+    /**
+     * Decode source bytes, in place, with Sierra-standard codeword "Avis
+     * Durgan."
+     *
+     * @param src source bytes (modified in place)
      * @return the source bytes
      */
     static byte[] decodeInPlace(final byte[] src) {
-        return decodeInPlace(AVIS, src);
+        return decodeInPlace(AVIS, src, 0, src.length);
     }
 
     /**

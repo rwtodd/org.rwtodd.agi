@@ -109,4 +109,26 @@ public class AGIResourceLoader implements ResourceLoader {
             throw new AGIException("Could not load OBJECT!", e);
         }
     }
+
+    
+    @Override
+    public LogicResource loadLogic(int number) throws AGIException, ResourceNotPresentException {
+        final var dirEntry = rdir.findLogic(number);
+        if (!dirEntry.isPresent()) {
+            throw new ResourceNotPresentException("LOGIC resource " + number + " isn't present!");
+        }
+        return loadLogic(number, dirEntry);
+    }
+
+    protected LogicResource loadLogic(int number, DirEntry de) throws AGIException, ResourceNotPresentException {
+        final var resbytes = vmgr.getResource(de);
+        if (version < 3.0) {
+            // we have to decode the text section
+            final var textArea = ((resbytes[0]&0xff) | ((resbytes[1]&0xff) << 8)) + 2;
+            final var msgIndexLen = 2 * (resbytes[textArea]&0xff);
+            Util.decodeInPlace(resbytes, textArea+3+msgIndexLen, resbytes.length);
+        }
+        return new LogicResource(resbytes);
+    }
+
 }
