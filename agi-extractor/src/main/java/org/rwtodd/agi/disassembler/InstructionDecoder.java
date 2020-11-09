@@ -276,7 +276,7 @@ public class InstructionDecoder {
 
     protected Instruction decodeSimpleTest(int byteCode, final LogicScript script, int start, int end) throws AGIException {
         return switch (byteCode) {
-            case 14 -> {
+            case 14 -> {  /* SAID() test */
                 final int count = script.getRawByte(start++);
                 final var wordGroups = new int[count];
                 for (int i = 0; i < count; ++i) {
@@ -299,7 +299,7 @@ public class InstructionDecoder {
         };
     }
 
-    protected CompoundInstruction decodeTestStream(int delim, final LogicScript script, int start, int end) throws AGIException {
+    protected Instruction decodeTestStream(int delim, final LogicScript script, int start, int end) throws AGIException {
         final var tests = new CompoundInstruction();
         while (start < end) {
             final var bc = script.getRawByte(start++);
@@ -311,7 +311,7 @@ public class InstructionDecoder {
                 start += decoded.getLength() - 1;
             }
         }
-        return tests;
+        return tests.compress();
     }
 
     /* parse an IF structure 0xFF */
@@ -321,14 +321,13 @@ public class InstructionDecoder {
         final var thenLen = script.getRawByte(start) | (script.getRawByte(start + 1) << 8);
         var thenEnd = start + thenLen + 2;
         if (thenEnd > end) {
-            tst.add(
-                    new CommentInstruction(
-                            String.format("End of THEN is after END... %04X vs %04X... shortening it...", thenEnd, end)));
-            thenEnd = end;  // TEST RWT...
-//            throw new AGIException(
-//                    String.format(
-//                            "Out of space for THEN portion of IF-THEN jump-loc=%d end=%d thenEnd=%d",
-//                            start, end, thenEnd));
+            // OK, we ran out of room for the THEN section of our code... so rather than making
+            // this an IF-THEN statement, it needs to be an UNLESS (test) GOTO statement.  Fortunately,
+            // these are rare... There are cases where it would be better to backtrack and turn the higher-level
+            // IF or ELSE statement into a GOTO, but there is no easy way to tell which one is more pleasing, so
+            // I just use the greedy approach and use structured IF's until it breaks.  Again, there are very
+            // few of these in practice so it works out OK.
+            return new UnlessGotoInstruction(tst, thenLen);
         }
         start += 2;
 
@@ -348,7 +347,6 @@ public class InstructionDecoder {
         final var elseIns = (elseEnd > 0)
                 ? decode(script, thenEnd + 3, elseEnd)
                 : null;
-
         return new IfAndInstruction(tst, thenIns, elseIns);
     }
 
@@ -377,6 +375,6 @@ public class InstructionDecoder {
         } catch (Exception e) {
             throw new AGIException("Error decoding instructions", e);
         }
-        return disassembled;
+        return disassembled.compress();
     }
 }

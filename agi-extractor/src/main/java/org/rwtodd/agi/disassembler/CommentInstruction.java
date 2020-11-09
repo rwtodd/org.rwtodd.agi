@@ -23,7 +23,7 @@ public class CommentInstruction implements Instruction {
 
     @Override
     public void printTo(PrintWriter pw, LogicScript script, int baseLocation, String indentation) {
-        pw.printf("      %s<<<%s>>>\n", indentation, comment);
+        pw.printf("      %s;; %s\n", indentation, comment);
     }
     
 }

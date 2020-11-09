@@ -38,19 +38,11 @@ public class CompoundInstruction implements Instruction {
     }
     
     /**
-     * Get the number of instructions in this compound instruction.
-     * @return the number of instructions.
+     * Reduces a single-instruction CompoundInstruction to just the contents. There's
+     * no sense in carrying around this container if there's only one instruction in it.
+     * @return either the whole CompoundInstruction or a single Instruction.
      */
-    public int getInstructionCount() {
-        return contents.size();
-    }
-    
-    /**
-     * Get the component instruction indexed by {@code i}.
-     * @param i the index of the desired instruction
-     * @return the component instruction.
-     */
-    public Instruction get(int i) {
-        return contents.get(i);
+    public Instruction compress() {
+        return (contents.size() == 1) ? contents.get(0) : this;
     }
 }
