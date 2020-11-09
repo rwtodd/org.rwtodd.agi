@@ -14,11 +14,16 @@ import org.rwtodd.agi.resources.BufferedImagePicHandler;
  */
 public class LoggingImageHandler extends BufferedImagePicHandler {
 
+    private final int picNum;
     private int step;
     private boolean inPlot;
-    public LoggingImageHandler() {
+    private int pointCount;
+    
+    public LoggingImageHandler(int num) {
         super();
-        step = 0;
+        picNum = num;
+        step = 1;
+        pointCount = 0;
         inPlot = false;
     }
 
@@ -34,7 +39,7 @@ public class LoggingImageHandler extends BufferedImagePicHandler {
     public void line(final int x1, final int y1,
             final int x2, final int y2,
             final int picColor, final int priColor) {
-        System.err.printf("Line: (%d %d) (%d %d) (pic:%d/pri:%d)\n", x1, y1, x2, y2, picColor, priColor);
+        System.err.printf("Step %d: Line: (%d %d) (%d %d) (pic:%d/pri:%d)\n", step, x1, y1, x2, y2, picColor, priColor);
         inPlot = true;
         super.line(x1, y1, x2, y2, picColor, priColor);
         inPlot = false;
@@ -43,7 +48,7 @@ public class LoggingImageHandler extends BufferedImagePicHandler {
 
     @Override
     public void fill(int x, int y, int picColor, int priColor) {
-        System.err.printf("Fill %d %d (pic:%d/pri:%d)\n", x, y, picColor, priColor);
+        System.err.printf("Step %d: Fill %d %d (pic:%d/pri:%d)\n", step, x, y, picColor, priColor);
         inPlot = true;
         super.fill(x, y, picColor, priColor);
         inPlot = false;
@@ -53,17 +58,20 @@ public class LoggingImageHandler extends BufferedImagePicHandler {
     @Override
     public void plotPoint(int x, int y, int picColor, int priColor) {
         if(!inPlot) {
-            System.err.printf("Plot Point %d %d  (pic:%d/pri:%d)\n", x, y, picColor, priColor);
+            System.err.printf("Step %d: Plot Point %d %d  (pic:%d/pri:%d)\n", step, x, y, picColor, priColor);
+            if(++pointCount >= 10) makeImg(); // only plot every 10 points or so...
         }
         super.plotPoint(x, y, picColor, priColor);
     }
 
     private void makeImg() {
-        ++step;
         try {
-            this.writeImageToGIF(Paths.get(String.format("step_%05d.gif", step)), 3);
+            this.writeImageToGIF(Paths.get(String.format("pic_%03d_step_%05d.gif", picNum, step)), 3);
         } catch (Exception e) {
             System.err.println(e);
+        } finally {
+            ++step;
+            pointCount = 0;
         }
     }
 

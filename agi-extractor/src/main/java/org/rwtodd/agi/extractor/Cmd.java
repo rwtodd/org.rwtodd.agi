@@ -34,13 +34,13 @@ public class Cmd {
             final var picScale = new IntParam("picscale", ' ', "FACTOR", "How much to scale the image up", 3);
             final var doOne = new IntParam("resource", 'r', "NUMBER", "Just extract the given resource", null);
             final var doLogics = new FlagParam("logics", ' ', "write logic script resources");
-            final var verboseFlag = new FlagParam("verbose", 'v', "Write debug messages where applicable.");
+            final var picStepsFlag = new FlagParam("picsteps", ' ', "Write intermediate PIC images as PICs are drawn.");
 
             WordDictionary wordDictionary = null; // may or may not load the words...
             ObjectDictionary objectDictionary = null;    // may or may not load the objects....
 
             var parser = new Parser(efp, doCSound, doWords, doObjects, doPics,
-                    picScale, doLogics, doOne, verboseFlag, new HelpParam());
+                    picScale, picStepsFlag, doLogics, doOne, new HelpParam());
             parser.parse(args);
             if (efp.getValue() == null) {
                 parser.requestHelp();
@@ -93,9 +93,9 @@ public class Cmd {
 
                 if (doPics.getValue()) {
                     if (doOne.getValue() == null) {
-                        runPics(resloader, picScale.getValue(), verboseFlag.getValue());
+                        runPics(resloader, picScale.getValue(), picStepsFlag.getValue());
                     } else {
-                        runOnePic(doOne.getValue(), resloader, picScale.getValue(), verboseFlag.getValue());
+                        runOnePic(doOne.getValue(), resloader, picScale.getValue(), picStepsFlag.getValue());
                     }
                 }
 
@@ -197,12 +197,12 @@ public class Cmd {
         }
     }
 
-    private static void runOnePic(final int number, final ResourceLoader resloader, int scaleFactor, boolean verbose) {
+    private static void runOnePic(final int number, final ResourceLoader resloader, int scaleFactor, boolean showSteps) {
         try {
             System.out.println("Loading PIC " + number);
             final var res = resloader.loadPic(number);
-            final var handler = (verbose)
-                    ? new LoggingImageHandler()
+            final var handler = (showSteps)
+                    ? new LoggingImageHandler(number)
                     : new BufferedImagePicHandler();
             res.streamToHandler(handler);
             handler.writeImageToGIF(Paths.get(String.format("pic_%03d.gif", number)), scaleFactor);
@@ -214,10 +214,10 @@ public class Cmd {
         }
     }
 
-    private static void runPics(final ResourceLoader resloader, int scaleFactor, boolean verbose) {
+    private static void runPics(final ResourceLoader resloader, int scaleFactor, boolean showSteps) {
         // now dump all the pics...
         for (int i = 0; i < resloader.getPicCount(); ++i) {
-            runOnePic(i, resloader, scaleFactor, verbose);
+            runOnePic(i, resloader, scaleFactor, showSteps);
         }
     }
 
