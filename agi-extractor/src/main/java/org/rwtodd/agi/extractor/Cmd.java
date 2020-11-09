@@ -13,6 +13,7 @@ import org.rwtodd.agi.resources.ResourceNotPresentException;
 import org.rwtodd.agi.resources.VolumeManager;
 import org.rwtodd.args.*;
 import java.util.Map.Entry;
+import org.rwtodd.agi.disassembler.LogicResourceScript;
 import org.rwtodd.agi.resources.BufferedImagePicHandler;
 
 /**
@@ -23,7 +24,7 @@ import org.rwtodd.agi.resources.BufferedImagePicHandler;
 public class Cmd {
 
     public static void main(String[] args) {
-//        args = new String[] { "-dh:\\game\\kings-quest-4-agi", "--pics", "-r2" };
+        //args = new String[] { "-dh:\\game\\kings-quest-2", "--logics", "-r21" }; // TEST
         try {
             final var efp = new ExistingFileParam("dir", 'd', "directory", "Which directory to be in.");
             final var doCSound = new FlagParam("csound", ' ', "write csound scores for all sounds.");
@@ -62,8 +63,7 @@ public class Cmd {
                     runCSoundExtractor(resloader);
                 }
 
-                // there will eventually be other reasons (like LOGIC) to load words
-                if (doWords.getValue()) {
+                if (doWords.getValue() || doLogics.getValue()) {
                     try {
                         final var wdh = new WordDictionaryHandler();
                         resloader.loadWords().streamToHandler(wdh);
@@ -77,8 +77,7 @@ public class Cmd {
                     runWordDescription(wordDictionary);
                 }
 
-                // there will eventually be other reasons (like LOGIC) to load objects
-                if (doObjects.getValue()) {
+                if (doObjects.getValue() || doLogics.getValue()) {
                     try {
                         final var odh = new ObjectDictionaryHandler();
                         resloader.loadObjects().streamToHandler(odh);
@@ -101,10 +100,11 @@ public class Cmd {
                 }
 
                 if (doLogics.getValue()) {
+                    final var disassembler = new LogicResourceScript(metadata.getVersion(), wordDictionary, objectDictionary);
                     if (doOne.getValue() == null) {
-                        runLogics(resloader, verboseFlag.getValue());
+                        runLogics(resloader, disassembler);
                     } else {
-                        runOneLogic(doOne.getValue(), resloader, verboseFlag.getValue());
+                        runOneLogic(doOne.getValue(), resloader, disassembler);
                     }
                 }
             }
@@ -221,7 +221,7 @@ public class Cmd {
         }
     }
 
-    private static void runOneLogic(final int number, final ResourceLoader resloader, boolean verbose) {
+    private static void runOneLogic(final int number, final ResourceLoader resloader, LogicResourceScript disassembler) {
         try {
             System.out.println("Loading LOGIC " + number);
             final var res = resloader.loadLogic(number);
@@ -233,20 +233,25 @@ public class Cmd {
                 for (int msg = 0; msg < res.getMessageCount(); ++msg) {
                     pw.printf("%d: %s\n", msg, res.getMessage(msg));
                 }
+                pw.print("\nSCRIPT: ~~~~~~~~~~~~~~\n");
+                disassembler.setResource(res);
+                disassembler.getInstructionDecoder()
+                        .decode(disassembler, 0, disassembler.getRawLength())
+                        .printTo(pw, disassembler, 0, "");
             }
         } catch (IOException ioe) {
             System.err.println(ioe);
         } catch (ResourceNotPresentException rnp) {
-            System.out.println("PIC " + number + " isn't in the resources.");
+            System.out.println("LOGIC " + number + " isn't in the resources.");
         } catch (AGIException ae) {
             describeException("ERROR:", ae);
         }
     }
 
-    private static void runLogics(final ResourceLoader resloader, boolean verbose) {
+    private static void runLogics(final ResourceLoader resloader, LogicResourceScript disassembler) {
         // now dump all the lgoics...
         for (int i = 0; i < resloader.getLogicCount(); ++i) {
-            runOneLogic(i, resloader, verbose);
+            runOneLogic(i, resloader, disassembler);
         }
     }
 }

@@ -9,6 +9,11 @@ import org.rwtodd.agi.extractor.ObjectDictionary;
  */
 public interface LogicScript {
 
+    /**
+     * Get the unsigned byte from the logic source at the given location.
+     * @param location the location of the requested byte
+     * @return the byte (unsigned, as an integer)
+     */
     int getRawByte(int location);
 
     int getRawLength();
@@ -29,8 +34,8 @@ public interface LogicScript {
     
     double getAGIVersion();
 
-    default InstructionFactory getInstructionFactory() {
-        return new InstructionFactory(getAGIVersion());
+    default InstructionDecoder getInstructionDecoder() {
+        return new InstructionDecoder(getAGIVersion());
     }
 
     /** flag descriptions common to most (all?) AGI games */

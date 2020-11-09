@@ -37,9 +37,9 @@ public class BasicInstruction implements Instruction {
         return length - 1;
     }
 
-    protected BasicInstruction(final String n, final int l, final int a) {
+    protected BasicInstruction(final String n, final int numArgs, final int a) {
         name = n;
-        length = l;
+        length = numArgs + 1;
         args = a;
     }
 
@@ -51,6 +51,7 @@ public class BasicInstruction implements Instruction {
     @Override
     public void printTo(final PrintWriter pw, final LogicScript script, int baseLocation, final String indentation) {
         final var extraInfo = new StringBuilder();
+        final var extraIndent = indentation.isBlank() ? indentation : (" ".repeat(indentation.length()));
         pw.printf("%04X: %s%s", baseLocation, indentation, name);
         ++baseLocation;
         final var numArgs = getNumArgs();
@@ -69,39 +70,39 @@ public class BasicInstruction implements Instruction {
                         extraInfo.append(
                                 String.format(
                                         "      %s ;; MSG %%m%d: %s\n",
-                                        indentation,
+                                        extraIndent,
                                         aval,
                                         script.getScriptMessage(aval)));
                         break;
                     case ARG_FLG:
                         description = script.getFlagDescription(aval);
-                        if(description != null) {
+                        if (description != null) {
                             extraInfo.append(
                                     String.format(
                                             "      %s ;; FLAG %%f%d: %s\n",
-                                            indentation,
+                                            extraIndent,
                                             aval,
                                             description));
                         }
                         break;
                     case ARG_VAR:
                         description = script.getVariableDescription(aval);
-                        if(description != null) {
+                        if (description != null) {
                             extraInfo.append(
                                     String.format(
                                             "      %s ;; VAR %%v%d: %s\n",
-                                            indentation,
+                                            extraIndent,
                                             aval,
                                             description));
                         }
                         break;
                     case ARG_INV:
                         description = script.getObject(aval).getName();
-                        if(description != null) {
+                        if (description != null) {
                             extraInfo.append(
                                     String.format(
                                             "      %s ;; INVENTORY %%i%d: %s\n",
-                                            indentation,
+                                            extraIndent,
                                             aval,
                                             description));
                         }
@@ -111,7 +112,7 @@ public class BasicInstruction implements Instruction {
             pw.print(')');
         }
         pw.print('\n');
-        if(!extraInfo.isEmpty()) {
+        if (!extraInfo.isEmpty()) {
             pw.print(extraInfo);
         }
     }

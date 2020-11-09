@@ -10,7 +10,7 @@ import org.rwtodd.agi.resources.LogicResource;
  * @author rwtodd
  */
 public class LogicResourceScript implements LogicScript {
-    private final InstructionFactory ifactory;
+    private final InstructionDecoder idecoder;
     private final double agiVersion;
     private final WordDictionary words;
     private final ObjectDictionary objects;
@@ -24,7 +24,7 @@ public class LogicResourceScript implements LogicScript {
         this.agiVersion = agiVersion;
         words = wd;
         objects = od;
-        ifactory = new InstructionFactory(agiVersion);
+        idecoder = new InstructionDecoder(agiVersion);
         resource = lr;
     }
     
@@ -34,7 +34,7 @@ public class LogicResourceScript implements LogicScript {
     
     @Override
     public int getRawByte(int location) {
-        return resource.getByteCodes()[location];
+        return (resource.getByteCodes()[location] & 0xff);
     }
 
     @Override
@@ -64,8 +64,8 @@ public class LogicResourceScript implements LogicScript {
     }
 
     @Override
-    public InstructionFactory getInstructionFactory() {
-        return ifactory;
+    public InstructionDecoder getInstructionDecoder() {
+        return idecoder;
     }
     
 }
