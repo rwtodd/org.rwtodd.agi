@@ -131,4 +131,18 @@ public class AGIResourceLoader implements ResourceLoader {
         return new LogicResource(resbytes);
     }
 
+    @Override
+    public ViewResource loadView(int number) throws AGIException, ResourceNotPresentException {
+        final var dirEntry = rdir.findView(number);
+        if (!dirEntry.isPresent()) {
+            throw new ResourceNotPresentException("VIEW resource " + number + " isn't present!");
+        }
+        return loadView(number, dirEntry);
+    }
+
+    protected ViewResource loadView(int number, DirEntry de) throws AGIException, ResourceNotPresentException {
+        final var resbytes = vmgr.getResource(de);
+        return new ViewResource(resbytes);
+    }
+
 }
