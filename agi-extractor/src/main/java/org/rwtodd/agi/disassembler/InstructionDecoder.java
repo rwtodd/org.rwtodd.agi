@@ -334,7 +334,7 @@ public class InstructionDecoder {
 
         // now check of the ELSE jump...
         var elseEnd = -1;
-        if ((thenLen >= 3) && (script.getRawByte(thenEnd - 3) == 0xfe)) {
+        if ((thenLen > 3) && (script.getRawByte(thenEnd - 3) == 0xfe)) {
             int elseLen = (short) (script.getRawByte(thenEnd - 2) | (script.getRawByte(thenEnd - 1) << 8));
             elseEnd = thenEnd + elseLen;
             if ((elseLen > 0) && (elseEnd <= end)) {
