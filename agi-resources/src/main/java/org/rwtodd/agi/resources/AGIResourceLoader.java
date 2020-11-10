@@ -142,7 +142,7 @@ public class AGIResourceLoader implements ResourceLoader {
 
     protected ViewResource loadView(int number, DirEntry de) throws AGIException, ResourceNotPresentException {
         final var resbytes = vmgr.getResource(de);
-        return new ViewResource(resbytes);
+        return new ViewResource(number, resbytes);
     }
 
 }

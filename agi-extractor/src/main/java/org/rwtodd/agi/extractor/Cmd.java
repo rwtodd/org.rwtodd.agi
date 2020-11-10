@@ -15,6 +15,7 @@ import org.rwtodd.args.*;
 import java.util.Map.Entry;
 import org.rwtodd.agi.disassembler.LogicResourceScript;
 import org.rwtodd.agi.resources.BufferedImagePicHandler;
+import org.rwtodd.agi.resources.BufferedImageViewBuilder;
 
 /**
  * Runs the show.
@@ -24,23 +25,24 @@ import org.rwtodd.agi.resources.BufferedImagePicHandler;
 public class Cmd {
 
     public static void main(String[] args) {
-        //args = new String[] { "-dh:\\game\\kings-quest-2", "--logics", "-r21" }; // TEST
+        //args = new String[] { "-dh:\\game\\kings-quest-3", "--views" }; // TEST
         try {
-            final var efp = new ExistingFileParam("dir", 'd', "directory", "Which directory to be in.");
-            final var doCSound = new FlagParam("csound", ' ', "write csound scores for all sounds.");
-            final var doWords = new FlagParam("words", ' ', "write out the WORDS.TOK resources");
-            final var doObjects = new FlagParam("objects", ' ', "write out the OBJECTS resources");
-            final var doPics = new FlagParam("pics", ' ', "write GIFs of the PIC resources");
-            final var picScale = new IntParam("picscale", ' ', "FACTOR", "How much to scale the image up", 3);
+            final var efp = new ExistingFileParam("dir", 'd', "directory", "The game directory");
+            final var doCSound = new FlagParam("csound", ' ', "Write csound scores for all SOUND resources");
+            final var doWords = new FlagParam("words", ' ', "Write out the WORDS.TOK resources");
+            final var doObjects = new FlagParam("objects", ' ', "Write out the OBJECTS resources");
+            final var doPics = new FlagParam("pics", ' ', "Write GIFs of the PIC resources");
+            final var imgScale = new IntParam("scale", ' ', "FACTOR", "How much to scale images up", 3);
             final var doOne = new IntParam("resource", 'r', "NUMBER", "Just extract the given resource", null);
-            final var doLogics = new FlagParam("logics", ' ', "write logic script resources");
-            final var picStepsFlag = new FlagParam("picsteps", ' ', "Write intermediate PIC images as PICs are drawn.");
+            final var doLogics = new FlagParam("logics", ' ', "Write LOGIC script resources");
+            final var picStepsFlag = new FlagParam("picsteps", ' ', "Write intermediate PIC images as PICs are drawn");
+            final var doViews = new FlagParam("views", ' ', "Write GIFs of the VIEW resources");
 
             WordDictionary wordDictionary = null; // may or may not load the words...
             ObjectDictionary objectDictionary = null;    // may or may not load the objects....
 
             var parser = new Parser(efp, doCSound, doWords, doObjects, doPics,
-                    picScale, picStepsFlag, doLogics, doOne, new HelpParam());
+                    imgScale, picStepsFlag, doLogics, doOne, doViews, new HelpParam());
             parser.parse(args);
             if (efp.getValue() == null) {
                 parser.requestHelp();
@@ -93,9 +95,9 @@ public class Cmd {
 
                 if (doPics.getValue()) {
                     if (doOne.getValue() == null) {
-                        runPics(resloader, picScale.getValue(), picStepsFlag.getValue());
+                        runPics(resloader, imgScale.getValue(), picStepsFlag.getValue());
                     } else {
-                        runOnePic(doOne.getValue(), resloader, picScale.getValue(), picStepsFlag.getValue());
+                        runOnePic(doOne.getValue(), resloader, imgScale.getValue(), picStepsFlag.getValue());
                     }
                 }
 
@@ -105,6 +107,14 @@ public class Cmd {
                         runLogics(resloader, disassembler);
                     } else {
                         runOneLogic(doOne.getValue(), resloader, disassembler);
+                    }
+                }
+
+                if (doViews.getValue()) {
+                    if (doOne.getValue() == null) {
+                        runViews(resloader, imgScale.getValue());
+                    } else {
+                        runOneView(doOne.getValue(), resloader, imgScale.getValue());
                     }
                 }
             }
@@ -252,6 +262,37 @@ public class Cmd {
         // now dump all the lgoics...
         for (int i = 0; i < resloader.getLogicCount(); ++i) {
             runOneLogic(i, resloader, disassembler);
+        }
+    }
+
+    private static void runOneView(final int number, final ResourceLoader resloader, int scaleFactor) {
+        try {
+            System.out.println("Loading VIEW " + number);
+            final var res = resloader.loadView(number);
+            final var builder = new BufferedImageViewBuilder();
+            res.build(builder);
+            if (builder.getDescription().isPresent()) {
+                Files.writeString(Paths.get(String.format("view_%03d_desc.txt", number)), builder.getDescription().get());
+            }
+            for (int loop = 0; loop < builder.getLoopCount(); ++loop) {
+                for (int cell = 0; cell < builder.getCellCount(loop); ++cell) {
+                    final var outpath = Paths.get(String.format("view_%03d_loop_%03d_cell_%03d.gif", number, loop, cell));
+                    builder.writeToDisk(outpath, loop, cell, scaleFactor);
+                }
+            }
+        } catch (IOException ioe) {
+            System.err.println("VIEW " + number + " error writing IO. " + ioe);
+        } catch (ResourceNotPresentException rnp) {
+            System.out.println("PIC " + number + " isn't in the resources.");
+        } catch (AGIException ae) {
+            describeException("ERROR:", ae);
+        }
+    }
+
+    private static void runViews(final ResourceLoader resloader, int scaleFactor) {
+        // now dump all the pics...
+        for (int i = 0; i < resloader.getViewCount(); ++i) {
+            runOneView(i, resloader, scaleFactor);
         }
     }
 }

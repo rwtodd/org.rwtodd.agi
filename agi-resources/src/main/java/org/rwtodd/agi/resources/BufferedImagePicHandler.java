@@ -7,7 +7,6 @@ import java.awt.image.IndexColorModel;
 import java.awt.image.Raster;
 import java.awt.image.WritableRaster;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 
@@ -126,63 +125,6 @@ public class BufferedImagePicHandler implements PicResource.Handler {
         }
     }
 
-//    @Override
-//    public void fill(int x, int y, int picColor, int priColor) {
-//        Raster rasterCheck;
-//        int searchingFor;
-//        if ((picColor != 15) && (picColor != -1)) {
-//            rasterCheck = picRaster;
-//            searchingFor = 15;
-//        } else if ((picColor == -1) && (priColor != -1) && (priColor != 4)) {
-//            rasterCheck = priRaster;
-//            searchingFor = 4;
-//        } else {
-//            return;  // nothing to do!
-//        }
-//        final var maxWid = rasterCheck.getWidth() - 1;
-//        final var maxHt = rasterCheck.getHeight() - 1;
-//
-//        final var queue = new ArrayDeque<Point>();
-//        Point p = new Point(x, y);
-//
-//        while (p != null) {
-//            if (rasterCheck.getSample(p.px, p.py, 0) == searchingFor) {
-//                // scan to the left...
-//                x = p.px - 1;
-//                while ((x >= 0) && (rasterCheck.getSample(x, p.py, 0) == searchingFor)) {
-//                    --x;
-//                }
-//
-//                // now scan right filling points...
-//                boolean newSpanUp = true;
-//                boolean newSpanDown = true;
-//                for (++x; (x <= maxWid) && (rasterCheck.getSample(x, p.py, 0) == searchingFor); ++x) {
-//                    // fill the point
-//                    plotPoint(x, p.py, picColor, priColor);
-//                    
-//                    // check above
-//                    if((p.py > 0) && (rasterCheck.getSample(x,p.py-1,0) == searchingFor)) {
-//                        if(newSpanUp) {
-//                            queue.add(new Point(x,p.py-1));
-//                            newSpanUp = false;
-//                        }
-//                    } else {
-//                        newSpanUp = true;
-//                    }
-//                    // check below
-//                    if((p.py < maxHt) && (rasterCheck.getSample(x,p.py+1,0) == searchingFor)) {
-//                        if(newSpanDown) {
-//                            queue.add(new Point(x,p.py+1));
-//                            newSpanDown = false;
-//                        }
-//                    } else {
-//                        newSpanDown = true;
-//                    }
-//                }
-//            }
-//            p = queue.pollLast();
-//        }
-//    }
     @Override
     public void fill(int x, int y, int picColor, int priColor) {
         Raster rasterCheck;
