@@ -2,7 +2,7 @@ package org.rwtodd.agi.resources;
 
 /**
  * Represents a 4-voice AGI sound resource. It does minimal interpretation and
- * validation of the resource, and works with a client-provided Handler to build
+ * validation of the resource, and works with a client-provided Builder to build
  * the representation of the sound needed by the client.
  *
  * @author rwtodd
@@ -22,7 +22,7 @@ public class SoundResource {
      * takes the tedium of parsing the source bytes and encapsulates it away
      * from the clients.
      */
-    public static interface Handler {
+    public static interface Builder {
 
         void soundStart(int number, String desc);
 
@@ -51,17 +51,17 @@ public class SoundResource {
         data = src;
     }
 
-    public void streamToHandler(final Handler h) throws AGIException {
+    public void build(final Builder b) throws AGIException {
         int totalLength = 0;
         try {
-            h.soundStart(resNumber, dirEntry.toString());
+            b.soundStart(resNumber, dirEntry.toString());
 
-            totalLength = Math.max(totalLength, streamVoice(1, h));
-            totalLength = Math.max(totalLength, streamVoice(2, h));
-            totalLength = Math.max(totalLength, streamVoice(3, h));
-            totalLength = Math.max(totalLength, streamNoise(h));
+            totalLength = Math.max(totalLength, streamVoice(1, b));
+            totalLength = Math.max(totalLength, streamVoice(2, b));
+            totalLength = Math.max(totalLength, streamVoice(3, b));
+            totalLength = Math.max(totalLength, streamNoise(b));
 
-            h.soundEnd(totalLength);
+            b.soundEnd(totalLength);
         } catch (Exception e) {
             throw new AGIException("Error while parsing a sound resource", e);
         }
@@ -76,7 +76,7 @@ public class SoundResource {
         throw new AGIException("Sound has irregular voice of length " + len);
     }
 
-    private int streamVoice(final int num, final Handler h) throws AGIException {
+    private int streamVoice(final int num, final Builder b) throws AGIException {
         int curTime = 0;
         int audibleLength = 0;
 
@@ -84,7 +84,7 @@ public class SoundResource {
         int idx = (data[base] & 0xff) | ((data[base + 1] & 0xff) << 8);
         final int end = (data[base + 2] & 0xff) | ((data[base + 3] & 0xff) << 8);
         checkVoiceLength(idx, end - idx);
-        h.voiceStart(num);
+        b.voiceStart(num);
 
         while ((idx + 4) < end) {
             final int startTime = curTime;
@@ -94,24 +94,24 @@ public class SoundResource {
             if (attenuation < 15) {
                 // audible
                 final int freq = ((data[idx + 2] & 0x3f) << 4) | (data[idx + 3] & 0x0f);
-                h.voiceNote(startTime, duration, freq, attenuation);
+                b.voiceNote(startTime, duration, freq, attenuation);
                 audibleLength = curTime;
             }
             idx += 5;
         }
 
-        h.voiceEnd();
+        b.voiceEnd();
         return audibleLength;
     }
 
-    private int streamNoise(final Handler h) throws AGIException {
+    private int streamNoise(final Builder b) throws AGIException {
         int curTime = 0;
         int audibleLength = 0;
 
         int idx = (data[6] & 0xff) | ((data[7] & 0xff) << 8);
         final int end = data.length;
         checkVoiceLength(idx, end - idx);
-        h.noiseStart();
+        b.noiseStart();
 
         while ((idx + 4) < end) {
             final NoiseType nt = ((data[idx + 3] & 0x04) == 0)
@@ -133,13 +133,13 @@ public class SoundResource {
                     default ->
                         0x00;
                 };
-                h.noiseNote(startTime, duration, freq, attenuation, nt);
+                b.noiseNote(startTime, duration, freq, attenuation, nt);
                 audibleLength = curTime;
             }
             idx += 5;
         }
 
-        h.noiseEnd();
+        b.noiseEnd();
         return audibleLength;
     }
 }

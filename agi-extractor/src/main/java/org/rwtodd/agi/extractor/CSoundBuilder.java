@@ -12,12 +12,12 @@ import org.rwtodd.agi.resources.SoundResource;
  *
  * @author rwtodd
  */
-class CSoundHandler implements SoundResource.Handler, Closeable {
+class CSoundBuilder implements SoundResource.Builder, Closeable {
 
     private final PrintWriter out;
     private int curVoice;
 
-    CSoundHandler(Path outfile) throws IOException {
+    CSoundBuilder(Path outfile) throws IOException {
         out = new PrintWriter(
                 Files.newBufferedWriter(outfile, java.nio.charset.StandardCharsets.UTF_8));
         curVoice = -1;
