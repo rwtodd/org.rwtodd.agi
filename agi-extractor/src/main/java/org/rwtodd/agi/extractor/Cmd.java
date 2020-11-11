@@ -15,7 +15,7 @@ import org.rwtodd.args.*;
 import java.util.Map.Entry;
 import javax.sound.midi.InvalidMidiDataException;
 import org.rwtodd.agi.disassembler.LogicResourceScript;
-import org.rwtodd.agi.resources.BufferedImagePicHandler;
+import org.rwtodd.agi.resources.BufferedImagePicBuilder;
 import org.rwtodd.agi.resources.BufferedImageViewBuilder;
 
 /**
@@ -81,8 +81,8 @@ public class Cmd {
                 
                 if (doWords.getValue() || doLogics.getValue()) {
                     try {
-                        final var wdh = new WordDictionaryHandler();
-                        resloader.loadWords().streamToHandler(wdh);
+                        final var wdh = new WordDictionaryBuilder();
+                        resloader.loadWords().build(wdh);
                         wordDictionary = wdh;
                     } catch (AGIException agi) {
                         describeException("Error loading words: ", agi);
@@ -95,8 +95,8 @@ public class Cmd {
                 
                 if (doObjects.getValue() || doLogics.getValue()) {
                     try {
-                        final var odh = new ObjectDictionaryHandler();
-                        resloader.loadObjects().streamToHandler(odh);
+                        final var odh = new ObjectDictionaryBuilder();
+                        resloader.loadObjects().build(odh);
                         objectDictionary = odh;
                     } catch (AGIException agi) {
                         describeException("Error loading objects: ", agi);
@@ -257,9 +257,9 @@ public class Cmd {
             System.out.println("Loading PIC " + number);
             final var res = resloader.loadPic(number);
             final var handler = (showSteps)
-                    ? new LoggingImageHandler(number)
-                    : new BufferedImagePicHandler();
-            res.streamToHandler(handler);
+                    ? new LoggingImageBuilder(number)
+                    : new BufferedImagePicBuilder();
+            res.build(handler);
             handler.writeImageToGIF(Paths.get(String.format("pic_%03d.gif", number)), scaleFactor);
             handler.writePriorityToGIF(Paths.get(String.format("prio_%03d.gif", number)), scaleFactor);
         } catch (ResourceNotPresentException rnp) {

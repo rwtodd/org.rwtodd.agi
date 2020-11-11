@@ -9,7 +9,7 @@ package org.rwtodd.agi.resources;
  */
 public class ObjectsResource {
 
-    public static interface Handler {
+    public static interface Builder {
 
         void startObjects(int maximumAnimated);
 
@@ -24,19 +24,19 @@ public class ObjectsResource {
         data = src;
     }
 
-    public void streamToHandler(final Handler h) throws AGIException {
+    public void build(final Builder b) throws AGIException {
         try {
             final int wordsStart = 3 + ((data[0] & 0xff) | ((data[1] & 0xff) << 8));
             if((wordsStart%3)!=0) {
                 throw new AGIException("Malformed game objects header!");
             }
-            h.startObjects(data[2] & 0xff);
+            b.startObjects(data[2] & 0xff);
             for(int i = 3; i < wordsStart; i += 3) {
                 final var nameOffset = 3+((data[i]&0xff) | ((data[i+1]&0xff) << 8));
 		final var name = Util.asciizString(data, nameOffset);
-                h.object(data[i+2]&0xff, name);
+                b.object(data[i+2]&0xff, name);
             }
-            h.endObjects();
+            b.endObjects();
         } catch(AGIException agie) {
             throw agie;
         } catch (Exception e) {

@@ -13,7 +13,7 @@ public class WordsResource {
      * takes the tedium of parsing the source bytes and encapsulates it away
      * from the clients.
      */
-    public static interface Handler {
+    public static interface Builder {
 
         void wordsStart();
 
@@ -28,10 +28,10 @@ public class WordsResource {
         data = src;
     }
 
-    public void streamToHandler(final Handler h) throws AGIException {
+    public void build(final Builder b) throws AGIException {
         final var buffer = new StringBuilder(32);
         try {
-            h.wordsStart();
+            b.wordsStart();
             for (int idx = (data[1]&0xff); idx < data.length;) {
                 // compute the prefix
                 final int toSkip = data[idx++];
@@ -54,9 +54,9 @@ public class WordsResource {
                 final int groupNumber = ((data[idx]&0xff)<<8)|(data[idx+1]&0xff);
                 idx+=2;
                 
-                h.word(buffer.toString(), groupNumber);
+                b.word(buffer.toString(), groupNumber);
             }
-            h.wordsEnd();
+            b.wordsEnd();
         } catch (AGIException agie) {
             throw agie;
         } catch (Exception e) {

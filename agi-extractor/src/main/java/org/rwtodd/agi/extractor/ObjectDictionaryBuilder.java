@@ -10,12 +10,12 @@ import org.rwtodd.agi.resources.ObjectsResource;
  * Builds a list of game objects as a handler for the ObjectsResource.
  * @author rwtodd
  */
-class ObjectDictionaryHandler implements ObjectsResource.Handler, ObjectDictionary {
+class ObjectDictionaryBuilder implements ObjectsResource.Builder, ObjectDictionary {
   
     private int maxAnimated;
     private List<ObjectDictionary.Entry> objects;
     
-    public ObjectDictionaryHandler() { 
+    public ObjectDictionaryBuilder() { 
         maxAnimated = -1;
         objects = new ArrayList<>();
     }

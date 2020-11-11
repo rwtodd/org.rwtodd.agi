@@ -11,11 +11,11 @@ import java.util.ArrayDeque;
 import java.util.Arrays;
 
 /**
- * A PicResource.Handler that draws BufferedImages.
+ * A PicResource.Builder that draws BufferedImages.
  *
  * @author rwtodd
  */
-public class BufferedImagePicHandler implements PicResource.Handler {
+public class BufferedImagePicBuilder implements PicResource.Builder {
 
     private BufferedImage pictureImage;
     private WritableRaster picRaster;
@@ -23,13 +23,13 @@ public class BufferedImagePicHandler implements PicResource.Handler {
     private WritableRaster priRaster;
     private final byte[] palette;
 
-    public BufferedImagePicHandler(final byte[] palette) {
+    public BufferedImagePicBuilder(final byte[] palette) {
         pictureImage = null;
         priorityImage = null;
         this.palette = palette;
     }
 
-    public BufferedImagePicHandler() {
+    public BufferedImagePicBuilder() {
         this(PicResource.agiPalette);
     }
 

@@ -80,7 +80,7 @@ public abstract class PicPen {
      * @param priColor the priority color to use for the pen
      * @param pattern the pattern of pixels to use with the pen
      */
-    public void drawAt(final PicResource.Handler h,
+    public void drawAt(final PicResource.Builder h,
             int x, int y,
             int picColor, int priColor,
             final PenPattern pattern) {

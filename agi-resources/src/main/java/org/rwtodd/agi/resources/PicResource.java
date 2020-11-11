@@ -33,7 +33,7 @@ public class PicResource {
 
     static final java.awt.Dimension PIC_DIMENSIONS = new java.awt.Dimension(160, 168);
 
-    public static interface Handler {
+    public static interface Builder {
 
         void startPicture(int sizeX, int sizeY, int picColor, int priColor);
 
@@ -72,12 +72,12 @@ public class PicResource {
         currentPattern = SolidPenPattern.INSTANCE;
     }
 
-    public void streamToHandler(final Handler h) throws AGIException {
+    public void build(final Builder b) throws AGIException {
         try {
             int picColor = -1; // -1 means nothing
             int priColor = -1; // -1 means nothing
 
-            h.startPicture(PIC_DIMENSIONS.width, PIC_DIMENSIONS.height, 15, 4);
+            b.startPicture(PIC_DIMENSIONS.width, PIC_DIMENSIONS.height, 15, 4);
 
             int idx = 0;
             while (idx < data.length) {
@@ -91,24 +91,24 @@ public class PicResource {
                     case 0xf3 ->
                         priColor = -1;
                     case 0xf4 ->
-                        idx = drawCorners(h, picColor, priColor, true, idx);
+                        idx = drawCorners(b, picColor, priColor, true, idx);
                     case 0xf5 ->
-                        idx = drawCorners(h, picColor, priColor, false, idx);
+                        idx = drawCorners(b, picColor, priColor, false, idx);
                     case 0xf6 ->
-                        idx = drawLines(h, picColor, priColor, idx);
+                        idx = drawLines(b, picColor, priColor, idx);
                     case 0xf7 ->
-                        idx = drawRelativeLines(h, picColor, priColor, idx);
+                        idx = drawRelativeLines(b, picColor, priColor, idx);
                     case 0xf8 ->
-                        idx = drawFill(h, picColor, priColor, idx);
+                        idx = drawFill(b, picColor, priColor, idx);
                     case 0xf9 ->
                         idx = getPen(idx);
                     case 0xfa ->
-                        idx = drawPen(h, picColor, priColor, idx);
+                        idx = drawPen(b, picColor, priColor, idx);
                     case 0xff -> {
                         if (idx != data.length) {
                             throw new AGIException("Extraneous data after end of PIC!");
                         }
-                        h.endPicture();
+                        b.endPicture();
                     }
                     default ->
                         throw new AGIException("Malformed PIC resource -- saw " + Byte.toString(data[idx - 1]));
@@ -122,7 +122,7 @@ public class PicResource {
         }
     }
 
-    private int drawCorners(final Handler h, int picColor, int priColor, boolean changeY, int idx) {
+    private int drawCorners(final Builder b, int picColor, int priColor, boolean changeY, int idx) {
         // first, we get the start coords...
         int x = data[idx++] & 0xff;
         if (x >= 0xf0) {
@@ -147,7 +147,7 @@ public class PicResource {
             } else {
                 x2 = clipX(nextCoord);
             }
-            h.line(x, y, x2, y2, picColor, priColor);
+            b.line(x, y, x2, y2, picColor, priColor);
             drewLine = true;
             changeY = !changeY;
             x = x2;
@@ -157,12 +157,12 @@ public class PicResource {
 
         // if no lines were specified, at least draw the initial point.
         if (!drewLine) {
-            h.plotPoint(x, y, picColor, priColor);
+            b.plotPoint(x, y, picColor, priColor);
         }
         return idx;
     }
 
-    private int drawLines(Handler h, int picColor, int priColor, int idx) {
+    private int drawLines(Builder b, int picColor, int priColor, int idx) {
         // first, we get the start coords...
         int x = data[idx++] & 0xff;
         if (x >= 0xf0) {
@@ -191,7 +191,7 @@ public class PicResource {
                 break;
             }
             y2 = clipY(y2);
-            h.line(x, y, x2, y2, picColor, priColor);
+            b.line(x, y, x2, y2, picColor, priColor);
             drewLine = true;
             x = x2;
             y = y2;
@@ -199,12 +199,12 @@ public class PicResource {
 
         // if no lines were specified, at least draw the initial point.
         if (!drewLine) {
-            h.plotPoint(x, y, picColor, priColor);
+            b.plotPoint(x, y, picColor, priColor);
         }
         return idx;
     }
 
-    private int drawRelativeLines(Handler h, int picColor, int priColor, int idx) {
+    private int drawRelativeLines(Builder b, int picColor, int priColor, int idx) {
         // first, we get the start coords...
         boolean drewLine = false;
         int x = data[idx++] & 0xff;
@@ -224,7 +224,7 @@ public class PicResource {
         while (relmove < 0xf0) {
             final int x2 = clipX(x + (((relmove & 0x80) == 0x80) ? -1 : 1) * ((relmove >> 4) & 0x7));
             final int y2 = clipY(y + (((relmove & 0x08) == 0x08) ? -1 : 1) * (relmove & 0x7));
-            h.line(x, y, x2, y2, picColor, priColor);
+            b.line(x, y, x2, y2, picColor, priColor);
             relmove = data[++idx] & 0xff;
             drewLine = true;
             x = x2;
@@ -233,12 +233,12 @@ public class PicResource {
 
         // if no lines were specified, at least draw the initial point.
         if (!drewLine) {
-            h.plotPoint(x, y, picColor, priColor);
+            b.plotPoint(x, y, picColor, priColor);
         }
         return idx;
     }
 
-    private int drawFill(Handler h, int picColor, int priColor, int idx) {
+    private int drawFill(Builder b, int picColor, int priColor, int idx) {
         // read points and fill...
         while (true) {
             final int x = data[idx++] & 0xff;
@@ -251,7 +251,7 @@ public class PicResource {
                 --idx;
                 break;
             }
-            h.fill(clipX(x), clipY(y), picColor, priColor);
+            b.fill(clipX(x), clipY(y), picColor, priColor);
         }
         return idx;
     }
@@ -276,7 +276,7 @@ public class PicResource {
         return idx;
     }
 
-    private int drawPen(Handler h, int picColor, int priColor, int idx) {
+    private int drawPen(Builder b, int picColor, int priColor, int idx) {
         // read points and fill...
         while (true) {
             if (currentPattern.takesArgument()) {
@@ -297,7 +297,7 @@ public class PicResource {
                 --idx;
                 break;
             }
-            currentPen.drawAt(h, x, y, picColor, priColor, currentPattern);
+            currentPen.drawAt(b, x, y, picColor, priColor, currentPattern);
         }
         return idx;
     }

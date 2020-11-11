@@ -12,11 +12,11 @@ import java.util.stream.Stream;
  * A builder for a dictionary of AGI word resources.
  * @author rwtodd
  */
-public class WordDictionaryHandler implements WordsResource.Handler, WordDictionary {
+public class WordDictionaryBuilder implements WordsResource.Builder, WordDictionary {
     private final Map<String,Integer> wordMap;
     private final Map<Integer,List<String>> groupMap;
     
-    public WordDictionaryHandler() {
+    public WordDictionaryBuilder() {
         wordMap = new HashMap<>();
         groupMap = new HashMap<>();
     }

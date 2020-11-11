@@ -12,7 +12,6 @@ import javax.sound.midi.MetaMessage;
 import javax.sound.midi.MidiEvent;
 import javax.sound.midi.ShortMessage;
 import javax.sound.midi.MidiSystem;
-import org.rwtodd.agi.resources.AGIException;
 
 /**
  * A handler for sound resources which output CSound scores.

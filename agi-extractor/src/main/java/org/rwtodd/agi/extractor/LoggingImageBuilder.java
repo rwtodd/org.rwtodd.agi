@@ -1,25 +1,20 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package org.rwtodd.agi.extractor;
 
 import java.nio.file.Paths;
-import org.rwtodd.agi.resources.BufferedImagePicHandler;
+import org.rwtodd.agi.resources.BufferedImagePicBuilder;
 
 /**
  *
  * @author rwtodd
  */
-public class LoggingImageHandler extends BufferedImagePicHandler {
+public class LoggingImageBuilder extends BufferedImagePicBuilder {
 
     private final int picNum;
     private int step;
     private boolean inPlot;
     private int pointCount;
     
-    public LoggingImageHandler(int num) {
+    public LoggingImageBuilder(int num) {
         super();
         picNum = num;
         step = 1;
