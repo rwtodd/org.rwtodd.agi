@@ -45,7 +45,7 @@ public class SoundResource {
     private final int resNumber;
     private final DirEntry dirEntry;
     
-    public SoundResource(final int number, final DirEntry de, final byte[] src) {
+    SoundResource(final int number, final DirEntry de, final byte[] src) {
         resNumber = number;
         dirEntry = de;
         data = src;

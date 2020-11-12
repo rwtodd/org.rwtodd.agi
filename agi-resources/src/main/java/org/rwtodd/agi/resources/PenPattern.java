@@ -1,10 +1,10 @@
 package org.rwtodd.agi.resources;
 
 /**
- *
+ * An interface for dot patterns that AGI pens use in PIC resources.
  * @author rwtodd
  */
-public interface PenPattern extends Iterable<Boolean> {
+interface PenPattern extends Iterable<Boolean> {
     /**
      * Does this pen need an argument from the AGI resource (to set the pattern)?
      * @return true if yes, false if no

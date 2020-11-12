@@ -10,7 +10,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * A resource loader for all AGI games.
+ * A resource loader for all AGI games.  Unlike many classes in this package, small
+ * differences in AGI versions are ironed out in the code, rather than via independent
+ * V2/V3 classes.
  *
  * @author rwtodd
  */
@@ -82,9 +84,9 @@ public class AGIResourceLoader implements ResourceLoader {
 
     protected PicResource loadPic(int number, DirEntry de) throws AGIException, ResourceNotPresentException {
         final var resbytes = vmgr.getResource(de);
-        return (version > 2.9999)
-                ? new V3PicResource(resbytes)
-                : new PicResource(resbytes);
+        final var rpen = new RectanglePen();
+        final var cpen = (version > 2.9999) ? new V3CirclePen() : new CirclePen();
+        return new PicResource(resbytes, rpen, cpen);
     }
 
     @Override
@@ -92,25 +94,24 @@ public class AGIResourceLoader implements ResourceLoader {
         try {
             final var wordsTok = Files.readAllBytes(gamePath.resolve("WORDS.TOK"));
             return new WordsResource(wordsTok);
-        } catch(Exception e) {
+        } catch (Exception e) {
             throw new AGIException("Could not load WORDS.TOK!", e);
         }
     }
-    
+
     @Override
     public ObjectsResource loadObjects() throws AGIException {
         try {
             final var objfile = Files.readAllBytes(gamePath.resolve("OBJECT"));
-            if(version >= 2.411) {
+            if (version >= 2.411) {
                 Util.decodeInPlace(objfile);
             }
             return new ObjectsResource(objfile);
-        } catch(Exception e) {
+        } catch (Exception e) {
             throw new AGIException("Could not load OBJECT!", e);
         }
     }
 
-    
     @Override
     public LogicResource loadLogic(int number) throws AGIException, ResourceNotPresentException {
         final var dirEntry = rdir.findLogic(number);
@@ -124,9 +125,9 @@ public class AGIResourceLoader implements ResourceLoader {
         final var resbytes = vmgr.getResource(de);
         if (version < 3.0) {
             // we have to decode the text section
-            final var textArea = ((resbytes[0]&0xff) | ((resbytes[1]&0xff) << 8)) + 2;
-            final var msgIndexLen = 2 * (resbytes[textArea]&0xff);
-            Util.decodeInPlace(resbytes, textArea+3+msgIndexLen, resbytes.length);
+            final var textArea = ((resbytes[0] & 0xff) | ((resbytes[1] & 0xff) << 8)) + 2;
+            final var msgIndexLen = 2 * (resbytes[textArea] & 0xff);
+            Util.decodeInPlace(resbytes, textArea + 3 + msgIndexLen, resbytes.length);
         }
         return new LogicResource(resbytes);
     }

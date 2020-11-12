@@ -1,6 +1,5 @@
 package org.rwtodd.agi.resources;
 
-import java.util.BitSet;
 import java.util.Iterator;
 
 /**
@@ -8,7 +7,7 @@ import java.util.Iterator;
  *
  * @author rwtodd
  */
-public class SplatterPattern implements PenPattern {
+class SplatterPattern implements PenPattern {
 
     private int patternNumber; /* the current pattern number */
 

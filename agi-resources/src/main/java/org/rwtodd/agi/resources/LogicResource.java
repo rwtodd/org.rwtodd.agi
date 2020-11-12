@@ -14,7 +14,7 @@ public class LogicResource {
     private final String[] scriptStrings;
     private final byte[] script;
 
-    public LogicResource(final byte[] src) {
+    LogicResource(final byte[] src) {
         final var textArea = ((src[0] & 0xff) | ((src[1] & 0xff) << 8)) + 2;
         final var msgCount = src[textArea] & 0xff;
         scriptStrings = new String[msgCount];

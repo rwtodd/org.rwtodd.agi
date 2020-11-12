@@ -5,11 +5,7 @@ package org.rwtodd.agi.resources;
  *
  * @author rwtodd
  */
-public class V3CirclePen extends CirclePen {
-
-    public V3CirclePen(int sz) {
-        super(sz);
-    }
+class V3CirclePen extends CirclePen {
 
     @Override
     protected int pixelstoPlot(int rownum) {

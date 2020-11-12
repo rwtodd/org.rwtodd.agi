@@ -62,13 +62,20 @@ public class PicResource {
     private final byte[] data;
     /* the resource data bytes */
 
- /* the current pen */
-    private PicPen currentPen;
-    private PenPattern currentPattern;
+    private final PicPen rectanglePen; /* the pen we will use for rectangles */
+    private final PicPen circlePen; /* the pen we will use for drawing circles */
+    private PicPen currentPen; /* will point to either circlePen or rectanglePen */
 
-    public PicResource(final byte[] src) {
+    private final PenPattern splatterPattern; /* the splatter pattern we will use */
+    private PenPattern currentPattern; /* the current pattern (either solid or splatter */
+
+    PicResource(final byte[] src, final PicPen rectPen, final PicPen circPen) {
         data = src;
-        currentPen = new RectanglePen(0);
+        rectanglePen = rectPen;
+        circlePen = circPen;
+        currentPen = rectanglePen;
+        currentPen.setSize(0);
+        splatterPattern = new SplatterPattern();
         currentPattern = SolidPenPattern.INSTANCE;
     }
 
@@ -256,23 +263,13 @@ public class PicResource {
         return idx;
     }
 
-    /**
-     * Create a circle pen appropriate for this resource. This protected method
-     * is meant for subclasses to adjust as needed.
-     *
-     * @param size the size level of the circle pen
-     * @return the generated pen
-     */
-    protected PicPen createCirclePen(int size) {
-        return new CirclePen(size);
-    }
-
     private int getPen(int idx) {
         final int arg = data[idx++] & 0xff;
         final int size = arg & 0x7;
 
-        currentPen = ((arg & 0x10) == 0) ? createCirclePen(size) : new RectanglePen(size);
-        currentPattern = ((arg & 0x20) == 0) ? SolidPenPattern.INSTANCE : new SplatterPattern();
+        currentPen = ((arg & 0x10) == 0) ? circlePen : rectanglePen;
+        currentPen.setSize(size);
+        currentPattern = ((arg & 0x20) == 0) ? SolidPenPattern.INSTANCE : splatterPattern;
         return idx;
     }
 

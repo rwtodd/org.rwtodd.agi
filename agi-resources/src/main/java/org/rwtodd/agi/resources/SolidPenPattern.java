@@ -8,7 +8,7 @@ import java.util.Iterator;
  * can share.
  * @author rwtodd
  */
-public enum SolidPenPattern implements PenPattern, Iterator<Boolean> {
+enum SolidPenPattern implements PenPattern, Iterator<Boolean> {
     INSTANCE;
     
     @Override

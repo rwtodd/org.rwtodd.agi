@@ -4,7 +4,7 @@ package org.rwtodd.agi.resources;
  * A PicPen that draws circles.
  * @author rwtodd
  */
-public class CirclePen extends PicPen {
+class CirclePen extends PicPen {
 
     private static final int[][] SKIPS = new int[][] {
         {0},  // width = 1
@@ -27,10 +27,7 @@ public class CirclePen extends PicPen {
         {2,4,6,6,6,8,8,8,8,8,6,6,6,4,2}, //width=8
     };
     
-    public CirclePen(int sz) {
-        super(sz);
-    }
-    
+   
     @Override
     protected int pixelsToSkip(int rownum) {
         return SKIPS[size][rownum];

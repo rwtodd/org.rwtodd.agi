@@ -1,20 +1,23 @@
 package org.rwtodd.agi.resources;
 
 /**
- *
+ * The base class for all the various types of PIC resource pens.
  * @author rwtodd
  */
-public abstract class PicPen {
+abstract class PicPen {
 
     /* the size class of the pen (0 to 7), as given in a PIC resource. */
-    protected final int size;
+    protected int size = 0;
 
     /**
-     * Create a pen of a given size
+     * Set the pen size.
      *
      * @param sz the size class (0 to 7)
      */
-    protected PicPen(final int sz) {
+    public void setSize(final int sz) {
+        if((sz < 0) || (sz > 7)) {
+            throw new IllegalArgumentException("Bad size class for PIC resource pen!");
+        }
         size = sz;
     }
 
@@ -73,14 +76,14 @@ public abstract class PicPen {
     /**
      * Draw the pen to the handler centered at x,y.
      *
-     * @param h the handler
+     * @param b the handler
      * @param x x position of the pen
      * @param y y position of the pen
      * @param picColor the picture color to use for the pen
      * @param priColor the priority color to use for the pen
      * @param pattern the pattern of pixels to use with the pen
      */
-    public void drawAt(final PicResource.Builder h,
+    public void drawAt(final PicResource.Builder b,
             int x, int y,
             int picColor, int priColor,
             final PenPattern pattern) {
@@ -110,7 +113,7 @@ public abstract class PicPen {
             final int skipped = pixelsToSkip(row), count = skipped + pixelstoPlot(row);
             for (int column = skipped; column < count; ++column) {
                 if (iterator.hasNext() && iterator.next()) {
-                    h.plotPoint(left + column, top + row, picColor, priColor);
+                    b.plotPoint(left + column, top + row, picColor, priColor);
                 }
             }
         }
