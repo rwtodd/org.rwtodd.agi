@@ -7,30 +7,30 @@
 ;; problem, since only `expand-lzw` uses it.
 (deftype TokenStreamReader
     [rf
-     ^:unsynchronized-mutable width
-     ^:unsynchronized-mutable hi
-     ^:unsynchronized-mutable overflow
-     ^:unsynchronized-mutable read-bits
-     ^:unsynchronized-mutable read-bits-size]
+     ^:unsynchronized-mutable ^byte width
+     ^:unsynchronized-mutable ^byte read-bits-size
+     ^:unsynchronized-mutable ^long hi
+     ^:unsynchronized-mutable ^long overflow
+     ^:unsynchronized-mutable ^long read-bits]
   IFn
   (invoke [this] (rf))
   (invoke [this result] (rf result))
   (invoke [this result input]
-    (set! read-bits (bit-or read-bits (bit-shift-left (bit-and input 0xff)
-                                                      read-bits-size)))
-    (set! read-bits-size (+ read-bits-size 8))
+    (set! read-bits      (bit-or read-bits (bit-shift-left (bit-and input 0xff)
+                                                           read-bits-size)))
+    (set! read-bits-size (unchecked-byte (+ read-bits-size 8)))
     (if (< read-bits-size width)
       result
       (let [current (bit-and read-bits (dec (bit-shift-left 1 width)))]
-        (set! read-bits-size (- read-bits-size width))
-        (set! read-bits (unsigned-bit-shift-right read-bits width))
-        (set! hi (inc hi))
+        (set! read-bits-size (unchecked-byte (- read-bits-size width)))
+        (set! read-bits      (unsigned-bit-shift-right read-bits width))
+        (set! hi             (inc hi))
         (when (= current 256) ;; 256 == CLEAR
-          (set! width 9)
-          (set! hi 257)
+          (set! width    (unchecked-byte 9))
+          (set! hi       257)
           (set! overflow 512))
         (when (and (>= hi overflow) (<= width 11))
-          (set! width (inc width))
+          (set! width    (unchecked-byte (inc width)))
           (set! overflow (bit-shift-left overflow 1)))
         (rf result current)))))
 
@@ -41,39 +41,28 @@
   [rf]
   (->TokenStreamReader rf    ;; pass along the rf
                        9     ;; initial width of 9
+                       0     ;; 0 bits have been read
                        257   ;; initial dictionary idx of 257
                        512   ;; 9-bits overflows at 512
-                       0     ;; 0 current value read
-                       0))   ;; 0 bits have been read
+                       0))   ;; 0 current value read
 
 ;; this helper class uses unsynch mutable fields for better performance, so
 ;; we must take care to use it only in single-threaded contexts.  That's no
 ;; problem, since only `expand-lzw` uses it in a `sequence`.
 (deftype TokenExpander
     [rf
-     ^:unsynchronized-mutable hi
-     ^:unsynchronized-mutable previous
-     ^:unsynchronized-mutable prefix
-     ^:unsynchronized-mutable suffix]
+     ^:unsynchronized-mutable ^long hi
+     ^:unsynchronized-mutable ^short previous
+     ^:unsynchronized-mutable ^shorts prefix
+     ^:unsynchronized-mutable ^bytes suffix]
   IFn
   (invoke [this] (rf))
   (invoke [this result] (rf result))
   (invoke [this result input]
     (cond
-      ;; less than 256 is a primitive token... literal
-      ;; and not in the dictionary
-      (< input 256)
-      (let [output (unchecked-byte input)]
-        (when (not= previous -1)
-          (aset-byte  suffix hi output)
-          (aset-short prefix hi previous))
-        (set! previous input)
-        (set! hi (inc hi))
-        (rf result output))
-
       ;; the CLEAR code (256) resets the dictionary
       (= input 256)
-      (do (set! previous -1)
+      (do (set! previous (unchecked-short -1))
           (set! hi 257)
           result)
 
@@ -88,12 +77,12 @@
             start-token  (if token-hi? previous input)
             suffixes     (into []
                                (comp (take-while #(>= % 0))
-                                     (map (partial aget suffix)))
-                               (iterate (partial aget prefix) start-token))]
+                                     (map #(aget suffix %)))
+                               (iterate #(aget prefix %) start-token))]
         (when (not= previous -1)
           (aset-byte  suffix hi (peek suffixes))
           (aset-short prefix hi previous))
-        (set! previous input)
+        (set! previous (unchecked-short input))
         (set! hi (inc hi))
         (reduce rf result (if token-hi?
                             (concat (rseq suffixes) [(peek suffixes)])
