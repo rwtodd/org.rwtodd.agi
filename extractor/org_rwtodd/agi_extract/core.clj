@@ -19,4 +19,4 @@
     (when (:help args)
       (stderr "Usage: extract [opts]\n\n" (ap/help-text cmd-args))
       (System/exit 1))
-    (println (res/hello))))
+    (println "hello")))
