@@ -16,6 +16,13 @@
   (with-open [stream (->> fname (io/file path) io/input-stream)]
     (.readAllBytes stream)))
 
+(defmacro read-16-le [arr idx]
+  `(bit-or (bit-and (aget ~arr ~idx) 0xff)
+           (bit-shift-left (bit-and (aget ~arr (inc ~idx)) 0xff) 8)))
+
+(defn- subset [arr start end]
+  (map #(aget arr %) (range start end)))
+
 ;; ====== Game Version Info
 ;; ---- support functions for `extract-version` -------------
 (defn- digit? [x] (<= 48 x 57)) ;; 48-57 == ASCII 0-9
@@ -72,13 +79,26 @@
       (throw (ex-info "Can't determine game prefix!" {:dir path})))))
 
 ;; ====== Resource Directories
-(defn- split-v3-dir
-  "Split a version-3 resource directory into sound, view, pic, and logic portions."
-  [dirfl]
-  { :sounds nil :logics nil :views nil :pics nil })
-
 (def ^:private v2-directories
   { :logics "LOGDIR", :sounds "SNDDIR", :views "VIEWDIR", :pics "PICDIR" })
+
+(defrecord ResourceEntry [^byte volume ^int offset])
+
+(defn parse-resdir
+  "Parse the given DIR into ResourceEntry's, or `nil` if the location is
+  all 0xf's."
+  [dir]
+  (into []
+        (comp (partition-all 3)
+              (map (fn [[b1 b2 b3]]
+                     (let [vol  (bit-and (bit-shift-right b1 4) 0x0f)
+                           offs (bit-or (bit-shift-left (bit-and b1 0x0f) 16)
+                                        (bit-shift-left (bit-and b2 0xff) 8)
+                                        (bit-and b3 0xff))]
+                       (when (or (not= vol 0x0f)
+                                 (not= offs 0xfffff))
+                         (->ResourceEntry vol offs))))))
+        dir))
 
 (defn load-resource-directories
   "Returns a map of :sound, :view, :pic, and :logic resource directories from the
@@ -86,9 +106,19 @@
   directories, you must pass the game's PREFIX."
   ([path]
    (zipmap (keys v2-directories)
-           (map #(read-entire-file path %) (vals v2-directories))))
+           (map (comp parse-resdir (partial read-entire-file path))
+                (vals v2-directories))))
   ([path prefix]
-   (split-v3-dir (read-entire-file path (str prefix "DIR")))))
+   (let [dirfile (read-entire-file path (str prefix "DIR"))
+         logicO  (read-16-le dirfile 0)
+         picO    (read-16-le dirfile 2)
+         viewO   (read-16-le dirfile 4)
+         soundO  (read-16-le dirfile 6)
+         end     (alength dirfile)]
+     { :logics (parse-resdir (subset dirfile logicO picO))
+      :pics (parse-resdir (subset dirfile picO viewO))
+      :views (parse-resdir (subset dirfile viewO soundO))
+      :sounds (parse-resdir (subset dirfile soundO end)) })))
 
 ;; ====== High-Level Interface
 

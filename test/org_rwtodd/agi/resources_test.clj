@@ -19,4 +19,9 @@
     (is (== (r/numeric-version (r/extract-version (.getBytes "g 1.111.1 1.234 x"))) 1.111))
     (is (== (r/numeric-version (r/extract-version (.getBytes "1x111.123x 9.999"))) 1.123))))
 
-
+(deftest test-resource-parse
+  (let [rdir (r/parse-resdir [ 0xff 0xff 0xff 0x12 0x34 0x56 ])]
+    (testing "all 0xF's == not there"
+      (is (nil? (nth rdir 0))))
+    (testing "lookup specific resource"
+      (is (= (nth rdir 1) (r/->ResourceEntry 1 0x23456))))))
