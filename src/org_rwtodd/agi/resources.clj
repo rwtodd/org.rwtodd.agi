@@ -1,8 +1,8 @@
 (ns org-rwtodd.agi.resources
+  (:use     [org-rwtodd.agi.res-decode])
   (:require [clojure.java.io :as io]))
 
-
-;; ====== Validation and Utilties
+;; ====== Validation
 (defn game-path?
   "Verify that this appears to be an AGI game directory"
   [path]
@@ -10,25 +10,12 @@
     (and (.isDirectory dir)
          (.exists (io/file dir "AGIDATA.OVL")))))
 
-(defn- read-entire-file
-  "Reads an entire file into a byte array"
-  [path fname]
-  (with-open [stream (->> fname (io/file path) io/input-stream)]
-    (.readAllBytes stream)))
-
-(defmacro read-16-le [arr idx]
-  `(bit-or (bit-and (aget ~arr ~idx) 0xff)
-           (bit-shift-left (bit-and (aget ~arr (inc ~idx)) 0xff) 8)))
-
-(defn- subset [arr start end]
-  (map #(aget arr %) (range start end)))
-
 ;; ====== Game Version Info
 ;; ---- support functions for `extract-version` -------------
 (defn- digit? [x] (<= 48 x 57)) ;; 48-57 == ASCII 0-9
 (defn- dot?   [x] (== x 46))    ;; 46 == ASCII '.'
-(def ^:private  long-vernum [digit? dot? digit? digit? digit? dot? digit? digit? digit?])
-(def ^:private short-vernum  [digit? dot? digit? digit? digit?])
+(def ^:private long-vernum  [digit? dot? digit? digit? digit? dot? digit? digit? digit?])
+(def ^:private short-vernum (subvec long-vernum 0 5))
 (defn- vermatch [ver bs]  (every? true? (map #(%1 %2) ver bs)))
 
 (defn extract-version
@@ -115,10 +102,10 @@
          viewO   (read-16-le dirfile 4)
          soundO  (read-16-le dirfile 6)
          end     (alength dirfile)]
-     { :logics (parse-resdir (subset dirfile logicO picO))
-      :pics (parse-resdir (subset dirfile picO viewO))
-      :views (parse-resdir (subset dirfile viewO soundO))
-      :sounds (parse-resdir (subset dirfile soundO end)) })))
+     { :logics (parse-resdir (aslice dirfile logicO picO))
+      :pics    (parse-resdir (aslice dirfile picO viewO))
+      :views   (parse-resdir (aslice dirfile viewO soundO))
+      :sounds  (parse-resdir (aslice dirfile soundO end)) })))
 
 ;; ====== High-Level Interface
 

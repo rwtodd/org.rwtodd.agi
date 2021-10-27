@@ -1,7 +1,23 @@
-(ns org-rwtodd.agi.decode
+(ns org-rwtodd.agi.res-decode
+  (:require [clojure.java.io :as io])
   (:import [clojure.lang IFn]
            [java.util Arrays]))
 
+;; ====== File Reading / Array Decoding
+(defn read-entire-file
+  "Reads an entire file into a byte array"
+  [path fname]
+  (with-open [stream (->> fname (io/file path) io/input-stream)]
+    (.readAllBytes stream)))
+
+(defmacro read-16-le [arr idx]
+  `(bit-or (bit-and (aget ~arr ~idx) 0xff)
+           (bit-shift-left (bit-and (aget ~arr (inc ~idx)) 0xff) 8)))
+
+(defn aslice [arr start end]
+  (map #(aget arr %) (range start end)))
+
+;; ====== LZW Expansion
 ;; this helper class uses unsynch mutable fields for better performance, so
 ;; we must take care to use it only in single-threaded contexts.  That's no
 ;; problem, since only `expand-lzw` uses it.
@@ -109,3 +125,9 @@
               (sequence (comp lzw-token-stream
                               lzw-token-expansion)
                         src)))
+
+
+;; ====== end of file
+;; Local Variables:
+;; page-delimiter: "^;; ======"
+;; End:
