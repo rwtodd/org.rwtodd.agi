@@ -10,9 +10,15 @@
   (with-open [stream (->> fname (io/file path) io/input-stream)]
     (.readAllBytes stream)))
 
+(defmacro read-8 [arr idx]
+  `(bit-and (aget ~arr ~idx) 0xff))
 (defmacro read-16-le [arr idx]
-  `(bit-or (bit-and (aget ~arr ~idx) 0xff)
-           (bit-shift-left (bit-and (aget ~arr (inc ~idx)) 0xff) 8)))
+  `(bit-or (read-8 ~arr ~idx)
+           (bit-shift-left (read-8 ~arr (inc ~idx)) 8)))
+(defmacro read-16-be [arr idx]
+  `(bit-or (bit-shift-left (read-8 ~arr ~idx) 8)
+           (read-8 ~arr (inc ~idx))))
+
 
 (defn aslice [arr start end]
   (map #(aget arr %) (range start end)))

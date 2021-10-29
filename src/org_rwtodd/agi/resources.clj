@@ -107,6 +107,39 @@
       :views   (parse-resdir (aslice dirfile viewO soundO))
       :sounds  (parse-resdir (aslice dirfile soundO end)) })))
 
+;; ====== Parse words
+(defn parse-words-tok
+  "Parse the contents of a WORDS.TOK file into a dictionary from words to group
+  numbers."
+  [^bytes src]
+  (let [sb  (StringBuilder. 48)
+        end (alength src)]
+    (loop [idx   (read-16-be src 0)
+           wdict (transient {})]  ; word-to-group
+      (if (>= (inc idx) end) ;; have to test idx+1 since there's often a last byte
+        (persistent! wdict)
+        (do (.setLength sb  (read-8 src idx))
+            ;; the word is encoded XOR'ed by 0x7f, and the high-bit is
+            ;; set on the last byte of the word.  Then, a 16-bit word
+            ;; group number finishes the entry.
+            (let [new-idx (loop [idx (inc idx)]
+                            (let [ch (aget src idx)]
+                              (.append sb (->> ch
+                                               (bit-and 0x7f)
+                                               (bit-xor 0x7f)
+                                               unchecked-char))
+                              (if (neg? ch) ; high-bit == last byte
+                                (inc idx)   ; return next index to read
+                                (recur (inc idx)))))]
+              (recur (+ new-idx 2)
+                     (assoc! wdict (.toString sb) (read-16-be src new-idx)))))))))
+
+(defn load-words-tok
+  "Loads the game's WORDS.TOK file, given the PATH to the game."
+  [path]
+  (let [src (read-entire-file path "WORDS.TOK")]
+    (parse-words-tok src)))
+
 ;; ====== High-Level Interface
 
 (defn load-game-info
