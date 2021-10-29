@@ -1,6 +1,7 @@
 (ns org-rwtodd.agi.resources-test
   (:require [clojure.test :refer :all]
-            [org-rwtodd.agi.resources :as r]))
+            [org-rwtodd.agi.resources :as r]
+            [org-rwtodd.agi.res-decode :as d]))
 
 (deftest test-version-extract
   (testing "trivial version extraction"
@@ -41,6 +42,34 @@
         (is (== (get dict "abc" 0) 256))
         (is (== (get dict "azz" 0) 20))
         (is (== (get dict "png" 0) 30))))))
+
+(deftest test-objects
+  (let [single-obj (byte-array [3 0 32 3 0 5 97 98 99 0])]
+    (testing "parse single object v1"
+      (let [parsed (r/parse-objects 1.0 single-obj)]
+        (is (== (:max-anim parsed) 32))
+        (is (== (count (:objects parsed)) 1))
+        (is (= (nth (:objects parsed) 0) (r/->AgiObject "abc" 5)))))
+    (testing "parse single object v2.411"
+      (let [single-obj (doto (aclone single-obj) d/avis-durgan!)
+            parsed (r/parse-objects 2.411 single-obj)]
+        (is (== (:max-anim parsed) 32))
+        (is (== (count (:objects parsed)) 1))
+        (is (= (nth (:objects parsed) 0) (r/->AgiObject "abc" 5))))))
+   (let [two-obj (byte-array [6 0 21 6 0 5 10 0 47 97 98 99 0 100 101 102 0])]
+    (testing "parse two objects v1"
+      (let [parsed (r/parse-objects 1.0 two-obj)]
+        (is (== (:max-anim parsed) 21))
+        (is (== (count (:objects parsed)) 2))
+        (is (= (nth (:objects parsed) 0) (r/->AgiObject "abc" 5)))
+        (is (= (nth (:objects parsed) 1) (r/->AgiObject "def" 47)))))
+    (testing "parse two objects v2.411"
+      (let [two-obj (doto (aclone two-obj) d/avis-durgan!)
+            parsed (r/parse-objects 2.411 two-obj)]
+        (is (== (:max-anim parsed) 21))
+        (is (== (count (:objects parsed)) 2))
+        (is (= (nth (:objects parsed) 0) (r/->AgiObject "abc" 5)))
+        (is (= (nth (:objects parsed) 1) (r/->AgiObject "def" 47)))))))
 
 (deftest test-resource-parse
   (let [rdir (r/parse-resdir [ 0xff 0xff 0xff 0x12 0x34 0x56 ])]

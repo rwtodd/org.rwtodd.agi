@@ -137,8 +137,27 @@
 (defn load-words-tok
   "Loads the game's WORDS.TOK file, given the PATH to the game."
   [path]
-  (let [src (read-entire-file path "WORDS.TOK")]
-    (parse-words-tok src)))
+  (->> "WORDS.TOK" (read-entire-file path) parse-words-tok))
+
+;; ====== Objects File
+(defrecord AgiObject [name starting-room])
+
+(defn parse-objects
+  [version  ^bytes src]
+  (when (>= version 2.411) (avis-durgan! src))
+  (let [end-idx   (+ 3 (read-16-le src 0))
+        max-anim  (read-8 src 2)]
+    (loop [idx 3, objs (transient [])]
+      (if (>= idx end-idx)
+        { :max-anim max-anim, :objects (persistent! objs) }
+        (recur (+ idx 3)
+               (conj! objs (->AgiObject (read-asciiz src (+ 3 (read-16-le src idx)))
+                                        (read-8 src (+ idx 2)))))))))
+
+(defn load-objects
+  "Load an AGI game's OBJECTS file, given the game path and the game version."
+  [path version]
+  (->> "OBJECT" (read-entire-file path) (parse-objects version)))
 
 ;; ====== High-Level Interface
 

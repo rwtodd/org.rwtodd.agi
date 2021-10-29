@@ -1,7 +1,8 @@
 (ns org-rwtodd.agi.res-decode
   (:require [clojure.java.io :as io])
   (:import [clojure.lang IFn]
-           [java.util Arrays]))
+           [java.util Arrays]
+           [java.nio.charset StandardCharsets]))
 
 ;; ====== File Reading / Array Decoding
 (defn read-entire-file
@@ -18,10 +19,28 @@
 (defmacro read-16-be [arr idx]
   `(bit-or (bit-shift-left (read-8 ~arr ~idx) 8)
            (read-8 ~arr (inc ~idx))))
-
-
 (defn aslice [arr start end]
   (map #(aget arr %) (range start end)))
+
+;; ====== ASCIIZ
+;; a few AGI locations have null-terminated strings, so we need a way to decode them
+(defn read-asciiz
+  "Read a null-terminated ASCII string from SRC at IDX."
+  [^bytes src idx]
+  (loop [last idx]
+    (if (zero? (aget src last))
+      (String. src idx (- last idx) StandardCharsets/US_ASCII)
+      (recur (inc last)))))
+   
+;; ====== AVIS DURGAN
+;; several portions of game data are XOR-ed against the ASCII bytes for AVIS DURGAN.
+(def ^:private avis (.getBytes "Avis Durgan" StandardCharsets/US_ASCII))
+(defn avis-durgan!
+  ([^bytes src] (avis-durgan! src 0 (alength src)))
+  ([^bytes src start end]
+   (dorun (map (fn [idx b] (aset-byte src idx (bit-xor (aget src idx) b)))
+               (range start end)
+               (cycle avis)))))
 
 ;; ====== LZW Expansion
 ;; this helper class uses unsynch mutable fields for better performance, so
