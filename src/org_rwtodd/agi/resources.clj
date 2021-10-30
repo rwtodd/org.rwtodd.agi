@@ -1,6 +1,8 @@
 (ns org-rwtodd.agi.resources
   (:use     [org-rwtodd.agi.res-decode])
-  (:require [clojure.java.io :as io]))
+  (:require [clojure.java.io :as io])
+  (:import  [java.util ArrayDeque]
+            [java.io RandomAccessFile Closeable File]))
 
 ;; ====== Validation
 (defn game-path?
@@ -159,25 +161,88 @@
   [path version]
   (->> "OBJECT" (read-entire-file path) (parse-objects version)))
 
+;; ====== File Cache
+;; We don't want to keep opening and closing resource files, so we
+;; need a cache.  This will be a sneaky mutable variable, which should
+;; only be accessed through the functions in this section.
+(deftype FileCacheEntry [file ^RandomAccessFile rafile]
+  Closeable
+  (close [this] (.close rafile)))
+
+(def ^:private file-cache-lock (Object.))
+(def file-cache-size 3)
+(def ^:private file-cache "mutable file cache" (ArrayDeque.))
+(defn locate-file
+  "Look up a random access file in the cache, opening it if necessary.
+  The cache lock should be locked when calling this function."
+  [^File f]
+  (or
+   ;; Option 1: get it from the cache
+   (some #(and (= (.file %) f) (.rafile %)) file-cache)
+   ;; Option 2: put a new entry in the cache
+   (let [newf (->FileCacheEntry f (RandomAccessFile. f "r"))]
+     (when (>= (.size file-cache) file-cache-size)
+       (.. file-cache remove close))
+     (.add file-cache newf)
+     (.rafile newf))))
+
+(defn clear-cache
+  "Clear any file caches in use."
+  []
+  (locking file-cache-lock
+    (dorun (map #(.close %) file-cache))
+    (.clear file-cache)))
+
+(defn load-resource-bytes
+  "Loads the actual resource bytes from disk"
+  [info ^ResourceEntry entry]
+  (locking file-cache-lock
+    (let [^RandomAccessFile file (locate-file
+                                  (io/file (:path info)
+                                           (str (:prefix info) "VOL." (.volume entry))))]
+      (.seek file (.offset entry))
+      (if (< (:version info) 3.0)
+        
+        ;; Version 1 or 2 Resource
+        (let [header (byte-array 5)]
+          (.readFully file header)
+          (if (and (== (read-16-be header 0) 0x1234)
+                   (== (read-8 header 2) (.volume entry)))
+            (let [res (byte-array (read-16-le header 3))]
+              (.readFully file res)
+              res)
+            (throw (ex-info "Bad resource header!" {:entry entry
+                                                    :path (:path info)}))))
+        ;; Version 3 Resource
+        nil))))
+        
 ;; ====== High-Level Interface
 
 (defn load-game-info
   "This is the main high-level function in this package, which verifies the
   given PATH points to an AGI game, and loads version and resource directory
   information into a map.  This map will be used by the other functions to
-  load resources."
-  [path]
-  (if (game-path? path)
-    (let [ver (load-version path)
-          pfx (when (>= ver 3.0) (determine-v3-prefix path))]
-      (merge { :version ver, :path (io/file path) }
-             (if pfx
-               (load-resource-directories path pfx)
-               (load-resource-directories path))
-             (and pfx { :prefix pfx })))
+  load resources.  By default it loads words and objects, but this can be
+  avoided by passing `false` to the ALL? parameter."
+  ([path] (load-game-info path true))
+  ([path all?]
+   (if (game-path? path)
+     (let [ver  (load-version path)
+           pfx  (when (>= ver 3.0) (determine-v3-prefix path))]
+       (merge { :version ver, :path (io/file path) }
+              (if pfx
+                (load-resource-directories path pfx)
+                (load-resource-directories path))
+              (when pfx { :prefix pfx })
+              (when all? { :words  (load-words-tok path)
+                          :objects (load-objects path ver) })))
 
-    (throw (ex-info "Not a game directory!" {:dir path}))))
+     (throw (ex-info "Not a game directory!" {:dir path})))))  
 
+(defn load-sound
+  [info num]
+  (when-let [entry (nth (:sounds info) num nil)]
+    (load-resource-bytes info entry)))
 
 ;; ====== end of file
 ;; Local Variables:

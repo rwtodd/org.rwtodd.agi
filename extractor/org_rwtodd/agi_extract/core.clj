@@ -50,7 +50,7 @@
     (when (or (:help args) (> (count (:free-args args)) 1))
       (stderr "Usage: extract [game-path] [opts]\n\n") (stderr (ap/help-text cmd-args))
       (System/exit 1))
-    (let [game-info (res/load-game-info (or (first (:free-args args)) "."))
+    (let [game-info (res/load-game-info (or (first (:free-args args)) ".") false)
           words     (when (:words args) (res/load-words-tok (:path game-info)))
           objects   (when (:objects args) (res/load-objects (:path game-info) (:version game-info)))]
       ;; ok, now perform the needed actions
