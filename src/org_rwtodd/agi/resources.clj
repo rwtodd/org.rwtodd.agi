@@ -109,7 +109,7 @@
       :views   (parse-resdir (aslice dirfile viewO soundO))
       :sounds  (parse-resdir (aslice dirfile soundO end)) })))
 
-;; ====== Parse words
+;; ====== Words.Tok File
 (defn parse-words-tok
   "Parse the contents of a WORDS.TOK file into a dictionary from words to group
   numbers."
@@ -141,7 +141,7 @@
   [path]
   (->> "WORDS.TOK" (read-entire-file path) parse-words-tok))
 
-;; ====== Objects File
+;; ====== Object File
 (defrecord AgiObject [name starting-room])
 
 (defn parse-objects
@@ -239,11 +239,14 @@
                 :voice-3 (parse-voice src v3 vn)
                 :noise (parse-noise src vn (alength src)) }]
     (assoc parsed
-           :audible-length (transduce (comp (keep #(peek (get parsed %)))
+           :audible-length (transduce (comp (keep #(peek %))
                                             (map #(+ (:time %) (:duration %))))
                                       max
                                       0
-                                      [:voice-1 :voice-2 :voice-3 :noise]))))
+                                      (vals parsed)))))
+
+;; ====== Logic Files
+;; TBD!
 
 ;; ====== File Cache
 ;; We don't want to keep opening and closing resource files, so we
@@ -292,13 +295,31 @@
           (.readFully file header)
           (if (and (== (read-16-be header 0) 0x1234)
                    (== (read-8 header 2) (.volume entry)))
+            ;; good header, read the data
             (let [res (byte-array (read-16-le header 3))]
               (.readFully file res)
               res)
+            ;; header failed validation!
             (throw (ex-info "Bad resource header!" {:entry entry
                                                     :path (:path info)}))))
+        
         ;; Version 3 Resource
-        nil))))
+        (let [header (byte-array 7)]
+          (.readFully file header)
+          (if (and (== (read-16-be header 0) 0x1234)
+                   (== (bit-and 0x7f (aget header 2)) (.volume entry)))
+            ;; good header, read the data and decompress if needed
+            (let [pic-compressed (neg? (aget header 2))
+                  reslen         (read-16-le header 3)
+                  ^bytes res     (byte-array (read-16-le header 5))]
+              (.readFully file res)
+              (cond
+                (== reslen (alength res))  res
+                pic-compressed             (expand-pic res reslen)
+                :else                      (expand-lzw res reslen)))
+            ;; header failed validation!
+            (throw (ex-info "Bad resource header!" {:entry entry
+                                                    :path (:path info)}))))))))
         
 ;; ====== High-Level Interface
 

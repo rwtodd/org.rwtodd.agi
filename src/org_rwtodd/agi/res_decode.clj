@@ -151,6 +151,12 @@
                               lzw-token-expansion)
                         src)))
 
+;; ====== PIC decompression
+(defn expand-pic
+  "Expand the byte array of PIC data, when it's compressed in V3 AGI files."
+  [src expanded-size]
+  ;; TBD!!!
+  (byte-array expanded-size))
 
 ;; ====== end of file
 ;; Local Variables:
