@@ -161,6 +161,90 @@
   [path version]
   (->> "OBJECT" (read-entire-file path) (parse-objects version)))
 
+;; ====== Sound Resources
+(defrecord SoundTone [^int time ^int duration ^short freq ^byte attenuation])
+(defrecord NoiseTone [^int time ^int duration ^short freq ^byte attenuation ^byte ntype])
+(defn noise-type
+  "turn noise type into a keyword, a utility function"
+  [ntype]
+  (case ntype
+    0  :linear
+    1  :white
+    nil))
+
+(defn- check-voice-len
+  "assert that the length of the voice is ok, and return the proper last index"
+  [start end ^bytes src]
+  (let [r (mod (- end start) 5)]
+    (cond
+      (zero? r) end
+      
+      (and (== 2 r)
+           (== -1 (aget src (dec end)) (aget src (- end 2))))
+      (- end 2)
+
+      :else (throw (ex-info "Bad length of sound voice!" { :len (- end start) })))))
+
+(defn- parse-voice
+  "parse a single voice of a sound resource"
+  [^bytes src idx end]
+  (let [end (check-voice-len idx end src)]
+    (loop [idx idx, curtime 0, result (transient [])]
+      (if (>= idx end)
+        ;; all done!
+        (persistent! result)
+
+        ;; read the next note
+        (let [atten (bit-and (aget src (+ idx 4)) 0x0f)
+              dur   (read-16-le src idx)
+              freq  (bit-or (bit-shift-left (bit-and (aget src (+ idx 2)) 0x3f) 4)
+                            (bit-and (aget src (+ idx 3)) 0x0f))]
+          (recur (+ idx 5)
+                 (+ curtime dur)
+                 (if (< atten 15)
+                   (conj! result (->SoundTone curtime dur freq atten))
+                   result)))))))
+
+(defn- parse-noise
+  "parse the noise channel of a sound resource"
+  [^bytes src idx end]
+  (let [end (check-voice-len idx end src)]
+    (loop [idx idx, curtime 0, result (transient [])]
+      (if (>= idx end)
+        ;; all done!
+        (persistent! result)
+
+        ;; read the next note
+        (let [ntype (if (zero? (bit-and (aget src (+ idx 3)) 0x04))
+                      0  ;; LINEAR
+                      1) ;; WHITE NOISE
+              atten (bit-and (aget src (+ idx 4)) 0x0f)
+              dur   (read-16-le src idx)
+              freq  (bit-and
+                     (bit-shift-left 0x10 (bit-and (aget src (+ idx 3)) 3))
+                     0x70)]
+          (recur (+ idx 5)
+                 (+ curtime dur)
+                 (if (< atten 15)
+                   (conj! result (->NoiseTone curtime dur freq atten ntype))
+                   result)))))))
+
+(defn parse-sound
+  "Transform a sound resource's raw bytes into a representation of the tune."
+  [^bytes src]
+  (let [v1 (read-16-le src 0), v2 (read-16-le src 2),
+        v3 (read-16-le src 4), vn (read-16-le src 6)
+        parsed { :voice-1 (parse-voice src v1 v2)
+                :voice-2 (parse-voice src v2 v3)
+                :voice-3 (parse-voice src v3 vn)
+                :noise (parse-noise src vn (alength src)) }]
+    (assoc parsed
+           :audible-length (transduce (comp (keep #(peek (get parsed %)))
+                                            (map #(+ (:time %) (:duration %))))
+                                      max
+                                      0
+                                      [:voice-1 :voice-2 :voice-3 :noise]))))
+
 ;; ====== File Cache
 ;; We don't want to keep opening and closing resource files, so we
 ;; need a cache.  This will be a sneaky mutable variable, which should
@@ -242,7 +326,7 @@
 (defn load-sound
   [info num]
   (when-let [entry (nth (:sounds info) num nil)]
-    (load-resource-bytes info entry)))
+    (parse-sound (load-resource-bytes info entry))))
 
 ;; ====== end of file
 ;; Local Variables:
