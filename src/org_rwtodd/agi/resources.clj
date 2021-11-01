@@ -234,16 +234,16 @@
   [^bytes src]
   (let [v1 (read-16-le src 0), v2 (read-16-le src 2),
         v3 (read-16-le src 4), vn (read-16-le src 6)
-        parsed { :voice-1 (parse-voice src v1 v2)
-                :voice-2 (parse-voice src v2 v3)
-                :voice-3 (parse-voice src v3 vn)
+        parsed { :voices [(parse-voice src v1 v2)
+                          (parse-voice src v2 v3)
+                          (parse-voice src v3 vn)]
                 :noise (parse-noise src vn (alength src)) }]
     (assoc parsed
            :audible-length (transduce (comp (keep #(peek %))
                                             (map #(+ (:time %) (:duration %))))
                                       max
                                       0
-                                      (vals parsed)))))
+                                      (cons (:noise parsed) (:voices parsed))))))
 
 ;; ====== Logic Files
 ;; TBD!
