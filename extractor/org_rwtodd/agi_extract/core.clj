@@ -1,7 +1,12 @@
 (ns org-rwtodd.agi-extract.core
   (:require [org-rwtodd.argparse :as ap]
             [org-rwtodd.agi.resources :as res]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io])
+  (:import [javax.sound.midi InvalidMidiDataException
+            Sequence  Track MetaMessage  MidiEvent  ShortMessage
+            MidiSystem]
+           [java.nio.charset StandardCharsets]))
+
 
 ;; ====== Cmdline parsing
 (defn which-parser
@@ -133,6 +138,85 @@ i 2  0  0  3 0.3     ;; left
               (stderr "Sound" num "does not exist."))))
         nums)))
 
+;; ====== Midi Command
+(def ^:private log2 "constant for freq-to-midi function" (Math/log 2.0))
+(defn freq-to-midi
+  "Convert an AGI Frequency level to a MIDI note number"
+  [freq]
+  (int (min 127
+            (Math/round (+ 36 (/ (* 12 (Math/log (/ (/ 111860.78125 freq) 64.0))) log2))))))
+
+(defn render-seq
+  "Render a sound into a MIDI Sequence."
+  [num sound]
+  (let [mseq        (Sequence. Sequence/PPQ 60)
+        meta-str    (-> (format "AGI Sound Resource %04d" num)
+                        (.getBytes StandardCharsets/US_ASCII))
+        tempo       (int (/ 60000000 120))]
+    ;; write a Tempo track with the title and tempo
+    (doto (.createTrack mseq)
+      (.add (MidiEvent. (MetaMessage. 0x03 meta-str (count meta-str)) 0))
+      (.add (MidiEvent. (MetaMessage. 0x51
+                                      (byte-array [(bit-shift-right tempo 16)
+                                                   (bit-shift-right tempo 8)
+                                                   tempo])
+                                      3)
+                        0)))
+
+    ;; for each voice, create a track named after it...
+    (dorun
+     (map-indexed
+      (fn [idx notes]
+        (let [track    (.createTrack mseq)
+              meta-str (-> (format "AGI Voice %d" (inc idx))
+                           (.getBytes StandardCharsets/US_ASCII))]
+          (.add track (MidiEvent. (MetaMessage. 0x03
+                                                meta-str
+                                                (count meta-str))
+                                  0))
+          ;; for each note in the voice, add NOTE_ON messages to the track.
+          ;; N.B. The second NOTE_ON has velocity 0, which is equivalent to
+          ;; a NOTE_OFF message.
+          (dorun (map (fn [note]
+                        (let [nn   (freq-to-midi (:freq note))
+                              time (* 2 (:time note))
+                              dur  (* 2 (:duration note))
+                              att  (- 100 (* 6 (:attenuation note)))]
+                          (doto track
+                            (.add (MidiEvent. (ShortMessage. ShortMessage/NOTE_ON
+                                                             idx
+                                                             nn
+                                                             att)
+                                              time))
+                            (.add (MidiEvent. (ShortMessage. ShortMessage/NOTE_ON
+                                                             idx
+                                                             nn
+                                                             0)
+                                              (+ time dur))))))
+                      notes))))
+      (:voices sound)))
+    
+    ;; return the populated sequence
+    mseq))
+                          
+  
+(defn process-midis
+  "Arrange to write the selected sound resources to midi files."
+  [game-info out-dir nums]
+  (stderr "Writing midi scores to output dir.")
+  (dorun
+   (map (fn [num]
+          (let [fname (format "sound-%04d.mid" num)
+                sound (res/load-sound game-info num)]
+            (if sound
+              (do
+                (stderr "Writing" fname)
+                (MidiSystem/write (render-seq num sound)
+                                  1
+                                  (io/file out-dir fname)))
+              (stderr "Sound" num "does not exist."))))
+        nums)))
+
 ;; ====== Main Program
 (defn -main
   "The main program"
@@ -160,7 +244,14 @@ i 2  0  0  3 0.3     ;; left
                          (:out args) 
                          (if (zero? (count csounds))
                            (range (count (:sounds game-info)))
-                           csounds))))))
+                           csounds)))
+        (when-let [midis (:midi args)]
+        (process-midis game-info
+                       (:out args) 
+                       (if (zero? (count midis))
+                         (range (count (:sounds game-info)))
+                         midis))))))
+      
       
 ;; ====== end of file
 ;; Local Variables:
