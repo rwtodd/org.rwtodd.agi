@@ -70,7 +70,7 @@
           (set! width    (unchecked-byte 9))
           (set! hi       257)
           (set! overflow 512))
-        (when (and (>= hi overflow) (<= width 11))
+        (when (and (>= hi overflow) (< width 11))
           (set! width    (unchecked-byte (inc width)))
           (set! overflow (bit-shift-left overflow 1)))
         (rf result current)))))

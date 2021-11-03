@@ -1,7 +1,7 @@
 (ns org-rwtodd.agi.resources
   (:use     [org-rwtodd.agi.res-decode])
   (:require [clojure.java.io :as io])
-  (:import  [java.util ArrayDeque]
+  (:import  [java.util ArrayDeque Arrays]
             [java.io RandomAccessFile Closeable File]))
 
 ;; ====== Validation
@@ -161,6 +161,24 @@
   [path version]
   (->> "OBJECT" (read-entire-file path) (parse-objects version)))
 
+;; ====== Logic Resources
+;; these are basically divided into a byte array and a vector of strings.
+(defn parse-logic
+  "Separate out the script strings from the bytecodes and return them."
+  [version ^bytes src]
+  (let [text-area (+ 2 (read-16-le src 0))
+        msg-count (read-8 src text-area)
+        msg-area  (+ 3 text-area)]
+    (when (< version 3.0)
+      (avis-durgan! src (+ msg-area (* 2 msg-count)) (alength src)))
+    { :byte-codes (Arrays/copyOfRange src 2 text-area)
+     :msgs (into []
+                 (map (fn [idx]
+                        (let [offset (read-16-le src idx)]
+                          (when (pos? offset)
+                            (read-asciiz src (+ msg-area offset -2))))))
+                 (range msg-area (+ msg-area (* 2 msg-count)) 2)) }))
+
 ;; ====== Sound Resources
 (defrecord SoundTone [^int time ^int duration ^short freq ^byte attenuation])
 (defrecord NoiseTone [^int time ^int duration ^short freq ^byte attenuation ^byte ntype])
@@ -244,9 +262,6 @@
                                       max
                                       0
                                       (cons (:noise parsed) (:voices parsed))))))
-
-;; ====== Logic Files
-;; TBD!
 
 ;; ====== File Cache
 ;; We don't want to keep opening and closing resource files, so we
@@ -344,7 +359,14 @@
 
      (throw (ex-info "Not a game directory!" {:dir path})))))  
 
+(defn load-logic
+  "Load logic script number NUM from the game associated with INFO"
+  [info num]
+  (when-let [entry (nth (:logics info) num nil)]
+    (parse-logic (:version info) (load-resource-bytes info entry))))
+
 (defn load-sound
+  "Load sound number NUM from the game associated with INFO"
   [info num]
   (when-let [entry (nth (:sounds info) num nil)]
     (parse-sound (load-resource-bytes info entry))))
