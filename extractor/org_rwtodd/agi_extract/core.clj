@@ -16,16 +16,21 @@
     ("all" "ALL") []
     (map #(Integer/parseInt %) (.split arg ","))))
 
+(defn reslist-flag
+  "A flag which takes a resource list"
+  [doc & keys]
+  (merge { :doc doc :arg "RESOURCE-LIST" :parser which-parser }
+         (apply hash-map keys)))
+
 (def cmd-args
   "the spec for the command-line arguments to the program"
   {:help    (ap/flag-param "Get Help" :short \h)
    :out     {:arg "DIR" :default "." :doc "Set the output directory to DIR."}
    :info    (ap/flag-param "Get Basic Game Info" :short \i)
    :words   (ap/flag-param "Output Game Words as words.csv" :short \w)
-   :csound  {:arg "RESOURCE-LIST" :parser which-parser :short \c
-             :doc "Extract sound resources to csound scores"}
-   :midi    {:arg "RESOURCE-LIST" :parser which-parser :short \m
-             :doc "Extract sound resources to MIDI files"}
+   :logic   (reslist-flag  "Extract logic resources to text files" :short \l)
+   :csound  (reslist-flag  "Extract sound resources to csound scores" :short \c)
+   :midi    (reslist-flag  "Extract sound resources to MIDI files" :short \m)
    :objects (ap/flag-param "Output Game Objects as objects.csv" :short \o)})
 
 ;; ====== Utility Functions
@@ -63,6 +68,41 @@
   (dorun (map (fn [o]
                 (.write out (format "\"%s\",%d\n" (:name o) (:starting-room o))))
               (:objects objs))))
+
+;; ====== Logic Disassembly
+
+(defn display-logic
+  "Format a logic script numbered NUM to OUT"
+  [out num script]
+  (.write out (format ";; Logic Script %04d\n" num))
+  ;; for now, just output the bytes...
+  (dorun (eduction (partition-all 16)
+                   (map (fn [bs]
+                          (.write out (pr-str bs))
+                          (.write out "\n")))
+                   (:byte-codes script)))
+          
+  ;; now give the table of strings...
+  (.write out "\n;; String Table:\n")
+  (dorun (map-indexed
+          (fn [i txt] (.write out (format "%02d: %s\n" (inc i) txt)))
+          (:msgs script))))
+
+(defn process-logics
+  "Arrange to write the selected logic resources to text files."
+  [game-info out-dir nums]
+  (stderr "Writing logic scripts to output dir.")
+  (dorun
+   (map (fn [num]
+          (let [fname (format "logic-%04d.txt" num)
+                script (res/load-logic game-info num)]
+            (if script
+              (do
+                (stderr "Writing" fname)
+                (with-open [w (io/writer (io/file out-dir fname))]
+                  (display-logic w num script)))
+              (stderr "Logic script" num "does not exist."))))
+        nums)))
 
 ;; ====== CSound Command
 (def csound-preamble
@@ -239,20 +279,25 @@ i 2  0  0  3 0.3     ;; left
         (stderr "Writing objects.csv to output dir.")
         (with-open [w (io/writer (io/file (:out args) "objects.csv"))]
           (display-objects w objects)))
+      (when-let [logics (:logic args)]
+        (process-logics game-info
+                        (:out args)
+                        (if (zero? (count logics))
+                          (range (count (:logics game-info)))
+                          logics)))
       (when-let [csounds (:csound args)]
         (process-csounds game-info
                          (:out args) 
                          (if (zero? (count csounds))
                            (range (count (:sounds game-info)))
                            csounds)))
-        (when-let [midis (:midi args)]
+      (when-let [midis (:midi args)]
         (process-midis game-info
                        (:out args) 
                        (if (zero? (count midis))
                          (range (count (:sounds game-info)))
                          midis))))))
-      
-      
+
 ;; ====== end of file
 ;; Local Variables:
 ;; page-delimiter: "^;; ======"
