@@ -64,10 +64,11 @@
 (defn display-objects
   "Output objects in CSV format with a header"
   [out objs]
-  (.write out "Object,\"Starting Room\"\n")
-  (dorun (map (fn [o]
-                (.write out (format "\"%s\",%d\n" (:name o) (:starting-room o))))
-              (:objects objs))))
+  (.write out "Number,Object,\"Starting Room\"\n")
+  (dorun (map-indexed
+          (fn [i o]
+            (.write out (format "%d,\"%s\",%d\n" i (:name o) (:starting-room o))))
+          (:objects objs))))
 
 ;; ====== Logic Disassembly
 
