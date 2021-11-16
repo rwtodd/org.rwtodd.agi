@@ -44,10 +44,10 @@
 (defn display-info
   "Put basic info about the game on screen."
   [info]
-  (println "Game info:\n"
-           (format "- Path: <%s>\n" (:path info))
-           (format "- Version: %s %f\n" (or (:prefix info) "") (:version info))
-           (format "- %d Sounds, %d Views, %d Pics, %d Logic Scripts\n"
+  (println (format "Game info:%n")
+           (format "- Path: <%s>%n" (:path info))
+           (format "- Version: %s %f%n" (or (:prefix info) "") (:version info))
+           (format "- %d Sounds, %d Views, %d Pics, %d Logic Scripts%n"
                    (count (:sounds info))
                    (count (:views info))
                    (count (:pics info))
@@ -58,16 +58,16 @@
   "Output words in CSV format with a header"
   [out words]
   (.write out "Word,Group\n")
-  (dorun (map #(.write out (apply format "\"%s\",%d\n" %)) words)))
+  (dorun (map #(.write out (apply format "\"%s\",%d%n" %)) words)))
 
 ;; ====== Objects Command
 (defn display-objects
   "Output objects in CSV format with a header"
   [out objs]
-  (.write out "Number,Object,\"Starting Room\"\n")
+  (.write out (format "Number,Object,\"Starting Room\"%n"))
   (dorun (map-indexed
           (fn [i o]
-            (.write out (format "%d,\"%s\",%d\n" i (:name o) (:starting-room o))))
+            (.write out (format "%d,\"%s\",%d%n" i (:name o) (:starting-room o))))
           (:objects objs))))
 
 ;; ====== Logic Disassembly
@@ -75,18 +75,18 @@
 (defn display-logic
   "Format a logic script numbered NUM to OUT"
   [out num script]
-  (.write out (format ";; Logic Script %04d\n" num))
+  (.write out (format ";; Logic Script %04d%n" num))
   ;; for now, just output the bytes...
   (dorun (eduction (partition-all 16)
                    (map (fn [bs]
                           (.write out (pr-str bs))
-                          (.write out "\n")))
+                          (.write out (format "%n"))))
                    (:byte-codes script)))
           
   ;; now give the table of strings...
   (.write out "\n;; String Table:\n")
   (dorun (map-indexed
-          (fn [i txt] (.write out (format "%02d: %s\n" (inc i) txt)))
+          (fn [i txt] (.write out (format "%02d: %s%n" (inc i) txt)))
           (:msgs script))))
 
 (defn process-logics
@@ -126,30 +126,30 @@ i 2  0  0  3 0.3     ;; left
 (defn display-csound
   "Write a csound score for a given SONG, resource num NUMBER, or output OUT"
   [out number song]
-  (.write out (format ";; Sound Resource %d\n" number))
+  (.write out (format ";; Sound Resource %d%n" number))
   (.write out csound-preamble)
   ;; write the three voices
   (dorun
    (map-indexed (fn [idx notes]
                   (let [curvoice (+ 11 idx)]
-                    (.write out (format ";; Start of voice %d (instrument %d)\n"
+                    (.write out (format ";; Start of voice %d (instrument %d)%n"
                                         (inc idx) curvoice))
-                    (.write out ";;\tstart\tdur\tlevel\tfreq\n")
+                    (.write out (format ";;\tstart\tdur\tlevel\tfreq%n"))
                     (dorun (map (fn [note]
-                                  (.write out (format "i%d\t%d\t%d\t%d\t%d\n"
+                                  (.write out (format "i%d\t%d\t%d\t%d\t%d%n"
                                                       curvoice
                                                       (:time note)
                                                       (:duration note)
                                                       (:attenuation note)
                                                       (:freq note))))
                                 notes))
-                    (.write out (format ";; End of instrument %d\n\n" curvoice))))
+                    (.write out (format ";; End of instrument %d%n%n" curvoice))))
                 (:voices song)))
   ;; write the noise channel
-  (.write out ";; Start of noise channel (instrument 21 linear noise and 31 white noise)\n")
-  (.write out ";;\tstart\tdur\tlevel\tfreq\n")
+  (.write out (format ";; Start of noise channel (instrument 21 linear noise and 31 white noise)%n"))
+  (.write out (format ";;\tstart\tdur\tlevel\tfreq%n"))
   (dorun (map (fn [note]
-                (.write out (format "i%d\t%d\t%d\t%d\t%d\n"
+                (.write out (format "i%d\t%d\t%d\t%d\t%d%n"
                                     (case (res/noise-type (:ntype note))
                                       :linear 31
                                       21)
@@ -158,10 +158,10 @@ i 2  0  0  3 0.3     ;; left
                                     (:attenuation note)
                                     (:freq note))))
               (:noise song)))
-  (.write out ";; End of noise channel\n\n")
+  (.write out (format ";; End of noise channel%n%n"))
   ;; add the mixer instrument
-  (.write out ";; mixer\n;;\tstart\tdur\trev\tlvl1\tlvl2\n")
-  (.write out (format "i99\t0\t%d\t0.9\t1.0\t1.0\n" (+ 60 (:audible-length song)))))
+  (.write out (format ";; mixer\n;;\tstart\tdur\trev\tlvl1\tlvl2%n"))
+  (.write out (format "i99\t0\t%d\t0.9\t1.0\t1.0%n" (+ 60 (:audible-length song)))))
 
 (defn process-csounds
   "Arrange to write the selected sound resources to csound scores."
