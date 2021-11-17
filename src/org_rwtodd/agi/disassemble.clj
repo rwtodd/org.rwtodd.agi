@@ -99,6 +99,13 @@ indention INDENT using INFO for extra data. Returns the next location."))
         (printf "      %s}%n" indent)
         base))))
           
+;; SAID is 14 WCount WORDS...
+(deftype SaidInstruction [words]
+  Instruction
+  (byte-size [this] (+ 2 (* 2 (count words))))
+  (pprint [this info base indent]
+    (printf "%04X: %sSAID(...)%n" base indent)))
+
 ;; OR is 0xfc ...<tests>... 0xfc
 (deftype OrInstruction [^Instruction tests]
   Instruction
@@ -350,6 +357,8 @@ indention INDENT using INFO for extra data. Returns the next location."))
    (->BasicInstruction "unknown180" 2 0x00) ;; 180
    (->BasicInstruction "unknown181" 0 0x0)])
 
+(def unknown-ins "The unknown instruction" (->BasicInstruction "ERROR! UNKNOWN!" 0 0x0))
+
 (defn generate-actions
   "Generate an instruction set for a given version of the AGI engine"
   [version]
@@ -358,6 +367,99 @@ indention INDENT using INFO for extra data. Returns the next location."))
          151 (->BasicInstruction "print.at" (if (< version 2.401) 3 4) 0x1119)
          152 (->BasicInstruction "print.at.v"  (if (< version 2.401) 3 4) 0x4449)
          176 (->BasicInstruction "unknown176" (if (== version 3.002086) 1 0) 0x0)))
+
+;; ====== Disassembly
+
+(defn simplify-compound
+  "Simplify a compound list of instructions if there's only one"
+  [ins]   (if (== (count ins) 1) (nth ins 0) ins))
+
+
+(defn decode-goto-statement
+  "Decode a 0xFE Goto instruction"
+  [^bytes src cur end]
+  (->GotoInstruction (read-16-le src cur)))
+
+(declare disassemble decode-test-stream) ;; forward declaration
+
+(defn decode-one-test
+  "Decode a single test as part of a test stream"
+  [bc ^bytes src start end]
+  (case bc
+    14 (let [count (read-8 src start)]
+         (->SaidInstruction
+          (into [] (map (fn [idx] (read-16-le src idx))
+                        (range (inc start) (+ 1 start (* 2 count)) 2))))) 
+    0xfc (->OrInstruction (decode-test-stream bc src start end))
+    0xfd (->NotInstruction (if (< start end)
+                             (decode-one-test (read-8 src start) src (inc start) end)
+                             unknown-ins))           
+    (nth test-instructions bc unknown-ins)))
+
+(defn decode-test-stream
+  "Decode a series of test instructions, stopping with DELIM"
+  [delim ^bytes src start end]
+  (loop [cur start
+         ins (transient [])]
+    (if (>= cur end)
+      (simplify-compound (persistent! ins))
+
+      (let [bc (read-8 src cur)]
+        (if (== bc delim)
+          (simplify-compound (persistent! ins))
+
+          (let [instruction (decode-one-test bc src (inc cur) end)]
+            (recur (+ cur (byte-size instruction))
+                   (conj! ins instruction))))))))
+            
+          
+
+(defn decode-if-statement
+  "Decode a 0xFF If-And statement"
+  [src actions cur end]
+  (let [tst (decode-test-stream 0xff src cur end)
+        then-start (+ cur (byte-size tst) 3)
+        then-len   (read-16-le src (- then-start 2))
+        then-end   (+ then-start then-len)]
+    (if (>= then-end end)
+      ;; OK, we ran out of room for the THEN section of our code... so rather than making
+      ;; this an IF-THEN statement, it needs to be an UNLESS (test) GOTO statement.
+      ;; Fortunately, these are rare... There are cases where it would be better to
+      ;; backtrack and turn the higher-level IF or ELSE statement into a GOTO, but
+      ;; there is no easy way to tell which one is more pleasing, so I just use 
+      ;; the greedy approach and use structured IF's until it breaks.  Again, there 
+      ;; are very few of these in practice so it works out OK.
+      (->UnlessGotoInstruction tst then-len)
+
+      ;; ok, there is room for a THEN
+      (let [else-len (if (and (> then-len 3) (== (read-8 src (- then-end 3)) 0xfe))
+                       (unchecked-short (read-16-le src (- then-end 2)))
+                       -1)
+            else-end (+ then-end else-len)
+            has-else (and (pos? else-len) (<= else-end end))]
+        (->IfAndInstruction tst
+                            (disassemble src actions then-start (- then-end
+                                                                   (if has-else 3 0)))
+                            (when has-else (disassemble src actions then-end else-end)))))))
+
+(defn disassemble
+  "Disassemble a logic script according to ACTIONS (see `generate-actions`) from
+  START to END indices for bytes SRC"
+  [^bytes src actions start end]
+  (loop [^int cur start
+         ins (transient [])]
+    (if (>= cur end)
+      ;; all done, return the disassembled results
+      (simplify-compound (persistent! ins))
+
+      ;; more to parse
+      (let [b    (read-8 src cur)
+            one  (case b
+                   0xfe (decode-goto-statement src (inc cur) end)
+                   0xff (decode-if-statement src actions (inc cur) end)
+                   (nth actions b unknown-ins))]
+        (recur (+ cur (byte-size one))
+               (conj! ins one))))))
 
 ;; ====== end of file
 ;; Local Variables:
