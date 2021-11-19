@@ -43,6 +43,17 @@
         (is (== (get dict "azz" 0) 20))
         (is (== (get dict "png" 0) 30))))))
 
+(deftest test-word-groups
+  (let [words { "hello" 10, "goodbye" 20, "hi" 10, "bye" 20 }]
+    (testing "can we reverse the dictionary"
+      (let [groups (r/generate-word-groups words)]
+        (is (== (count (keys groups))
+                (count (get groups 10))
+                (count (get groups 20))
+                2))
+        (is (= (set (get groups 10)) #{ "hello" "hi" }))
+        (is (= (set (get groups 20)) #{ "bye" "goodbye" }))))))
+
 (deftest test-objects
   (let [single-obj (byte-array [3 0 32 3 0 5 97 98 99 0])]
     (testing "parse single object v1"

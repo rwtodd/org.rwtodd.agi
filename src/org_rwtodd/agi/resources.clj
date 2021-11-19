@@ -141,6 +141,15 @@
   [path]
   (->> "WORDS.TOK" (read-entire-file path) parse-words-tok))
 
+(defn generate-word-groups
+  "Generate a dictionary of word groups from the words dictionary"
+  [words]
+  (persistent!
+   (reduce (fn [wg [word num]]
+             (assoc! wg num (conj (get wg num []) word)))
+           (transient {})
+           words)))
+
 ;; ====== Object File
 (defrecord AgiObject [name starting-room])
 

@@ -62,6 +62,11 @@
 ;; ====== Instruction Protocol, Implementations
 
 ;; instructions of various types need to know their length and how to pretty-print
+;; `info` should have keys:
+;;    :word-groups  == dictionary from group numbers to list of words.tok words
+;;    :source-bytes == byte-codes of the logic resource
+;;    :source-msgs  == the message list of the logic resource
+;;    :objects      == the object list of the game
 (defprotocol Instruction
   "Instructions know their length, and how to pretty-print themselves"
   (byte-size [this] "get the length of the instruction in bytes")
@@ -71,14 +76,14 @@ indention INDENT using INFO for extra data. Returns the next location."))
 ;; a vector of instructions just prints each in order
 (extend-type clojure.lang.PersistentVector ;; TODO...maybe use ISeq?
   Instruction
-  (byte-size [this] (transduce (map size) + this))
+  (byte-size [this] (transduce (map byte-size) + this))
   (pprint [this info base indent]
-    (reduce (fn [loc ins] (+ loc (pprint ins info loc indent)))
+    (reduce (fn [loc ins] (pprint ins info loc indent))
             base
             this)))
 
 ;; IF-AND is TODO
-(deftype IfAndInstruction [^Instruction conditions ^Instruction true-path ^Instruction false-path]
+(deftype IfAndInstruction [conditions true-path false-path]
   Instruction
   (byte-size [this] (+ 4
                        (byte-size conditions)
@@ -104,10 +109,18 @@ indention INDENT using INFO for extra data. Returns the next location."))
   Instruction
   (byte-size [this] (+ 2 (* 2 (count words))))
   (pprint [this info base indent]
-    (printf "%04X: %sSAID(...)%n" base indent)))
+    (printf "%04X: %sSAID(%s)%n" base indent (apply str (interpose \, words)))
+    (let [indent (if (.isBlank indent) indent (.repeat " " (.length indent)))]
+      (dorun (map (fn [w]
+                    (printf "      %s;; Word %d = %s%n"
+                            indent
+                            w
+                            (pr-str (-> info :word-groups (get w "?NotFound?")))))
+                  words)))
+    (+ base 2 (* 2 (count words)))))
 
 ;; OR is 0xfc ...<tests>... 0xfc
-(deftype OrInstruction [^Instruction tests]
+(deftype OrInstruction [tests]
   Instruction
   (byte-size [this] (+ 2 (byte-size tests)))
   (pprint [this info base indent]
@@ -117,7 +130,7 @@ indention INDENT using INFO for extra data. Returns the next location."))
       (inc base))))
 
 ;; NOT is 0xfd <<test>>
-(deftype NotInstruction [^Instruction wrapped]
+(deftype NotInstruction [wrapped]
   Instruction
   (byte-size [this] (inc (byte-size wrapped)))
   (pprint [this info base indent]
@@ -125,7 +138,7 @@ indention INDENT using INFO for extra data. Returns the next location."))
 
 ;; The IF 0xff instruction, in cases where the THEN portion does not have room
 ;; according to the structured code one level above it.
-(deftype UnlessGotoInstruction [^Instruction conditions ^Instruction jump]
+(deftype UnlessGotoInstruction [conditions jump]
   Instruction
   (byte-size [this] (+ 4 (byte-size conditions)))
   (pprint [this info base indent]
@@ -142,12 +155,59 @@ indention INDENT using INFO for extra data. Returns the next location."))
     (+ base 3)))
 
 ;; There are many BasicInstructions... most byte-codes are basic instructions
+;; support functions for decoding BasicInstruction arguments...
+(def arg-prefixes ["", "", "%o", "%c", "%v", "%i", "%t", "%f", "%s", "%m", "%w"])
+
 (deftype BasicInstruction [name args atype]
   Instruction
   (byte-size [this] (inc args))
   (pprint [this info base indent]
     (printf "%04X: %s%s" base indent name)
-    (inc args)))
+    (if (pos? args)
+      ;; collect the args and any extra info
+      (let [arg-vals (map #(bit-and % 0xff)
+                          (aslice (:source-bytes info) (inc base) (+ base 1 args)))
+            arg-types (map #(bit-and (bit-shift-left atype (* % 8)) 0x0f) (range args))
+            indent    (if (.isBlank indent) indent (.repeat " " (.length indent)))]
+        (printf "(%s)%n"
+                (apply str (interpose \, (map (fn [v t] (format "%s%d"
+                                                                (nth arg-prefixes t "??")
+                                                                v))
+                                              arg-vals
+                                              arg-types))))
+        ;; now print any extra data..
+        (dorun (map (fn [v t]
+                      (case t
+                        ;; variables
+                        4 (when-let [var (nth var-info v nil)]
+                             (printf "      %s;; Variable %d usually = %s%n"
+                                     indent
+                                     v
+                                     var))
+                        ;; items                        
+                        5 (when-let [obj (-> info :objects :objects (nth v nil))]
+                            (printf "      %s;; Item %d = %s%n"
+                                    indent
+                                    v
+                                    (:name obj)))
+                        ;; flags
+                        7 (when-let [var (nth flg-info v nil)]
+                             (printf "      %s;; Flag %d usually = %s%n"
+                                     indent
+                                     v
+                                     var))
+                        ;; messages
+                        9 (when-let [msg (-> info :source-msgs (nth (dec v) nil))]
+                            (printf "      %s;; Message %d = %s%n"
+                                     indent
+                                     v
+                                     msg))
+                        nil))
+                    arg-vals
+                    arg-types)))
+      ;; no args, just return
+      (printf "%n"))
+    (+ base (inc args))))
 
 ;; ====== The Basic Instructions
 (def test-instructions
@@ -412,8 +472,6 @@ indention INDENT using INFO for extra data. Returns the next location."))
             (recur (+ cur (byte-size instruction))
                    (conj! ins instruction))))))))
             
-          
-
 (defn decode-if-statement
   "Decode a 0xFF If-And statement"
   [src actions cur end]
@@ -429,7 +487,7 @@ indention INDENT using INFO for extra data. Returns the next location."))
       ;; there is no easy way to tell which one is more pleasing, so I just use 
       ;; the greedy approach and use structured IF's until it breaks.  Again, there 
       ;; are very few of these in practice so it works out OK.
-      (->UnlessGotoInstruction tst then-len)
+      (->UnlessGotoInstruction tst (->GotoInstruction then-end))
 
       ;; ok, there is room for a THEN
       (let [else-len (if (and (> then-len 3) (== (read-8 src (- then-end 3)) 0xfe))
@@ -445,22 +503,24 @@ indention INDENT using INFO for extra data. Returns the next location."))
 (defn disassemble
   "Disassemble a logic script according to ACTIONS (see `generate-actions`) from
   START to END indices for bytes SRC"
-  [^bytes src actions start end]
-  (loop [^int cur start
-         ins (transient [])]
-    (if (>= cur end)
+  ([^bytes src actions]
+   (disassemble src actions 0 (alength src)))
+  ([^bytes src actions start end]
+   (loop [^int cur start
+          ins (transient [])]
+     (if (>= cur end)
       ;; all done, return the disassembled results
-      (simplify-compound (persistent! ins))
-
-      ;; more to parse
-      (let [b    (read-8 src cur)
-            one  (case b
-                   0xfe (decode-goto-statement src (inc cur) end)
-                   0xff (decode-if-statement src actions (inc cur) end)
-                   (nth actions b unknown-ins))]
-        (recur (+ cur (byte-size one))
-               (conj! ins one))))))
-
+       (simplify-compound (persistent! ins))
+       
+       ;; more to parse
+       (let [b    (read-8 src cur)
+             one  (case b
+                    0xfe (decode-goto-statement src (inc cur) end)
+                    0xff (decode-if-statement src actions (inc cur) end)
+                    (nth actions b unknown-ins))]
+         (recur (+ cur (byte-size one))
+                (conj! ins one)))))))
+  
 ;; ====== end of file
 ;; Local Variables:
 ;; page-delimiter: "^;; ======"

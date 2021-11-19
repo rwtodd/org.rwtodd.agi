@@ -13,12 +13,27 @@
 
 (defmacro read-8 [arr idx]
   `(bit-and (aget ~arr ~idx) 0xff))
+
 (defmacro read-16-le [arr idx]
-  `(bit-or (read-8 ~arr ~idx)
-           (bit-shift-left (read-8 ~arr (inc ~idx)) 8)))
+  (cond
+    (number? idx) `(bit-or (read-8 ~arr ~idx)
+                           (bit-shift-left (read-8 ~arr ~(inc idx)) 8))
+    (symbol? idx)  `(bit-or (read-8 ~arr ~idx)
+                            (bit-shift-left (read-8 ~arr (inc ~idx)) 8))
+    :else  `(let [x# ~idx]
+              (bit-or (read-8 ~arr x#)
+                      (bit-shift-left (read-8 ~arr (inc x#)) 8)))))
+
 (defmacro read-16-be [arr idx]
-  `(bit-or (bit-shift-left (read-8 ~arr ~idx) 8)
-           (read-8 ~arr (inc ~idx))))
+  (cond
+    (number? idx) `(bit-or (bit-shift-left (read-8 ~arr ~idx) 8)
+                           (read-8 ~arr ~(inc idx)))
+    (symbol? idx)  `(bit-or (bit-shift-left (read-8 ~arr ~idx) 8)
+                            (read-8 ~arr (inc ~idx)))
+    :else  `(let [x# ~idx]
+              (bit-or (bit-shift-left (read-8 ~arr x#) 8)
+                      (read-8 ~arr (inc x#))))))
+
 (defn aslice [arr start end]
   (map #(aget arr %) (range start end)))
 

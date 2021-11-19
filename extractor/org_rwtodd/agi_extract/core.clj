@@ -1,6 +1,7 @@
 (ns org-rwtodd.agi-extract.core
   (:require [org-rwtodd.argparse :as ap]
             [org-rwtodd.agi.resources :as res]
+            [org-rwtodd.agi.disassemble :as dis]
             [clojure.java.io :as io])
   (:import [javax.sound.midi InvalidMidiDataException
             Sequence  Track MetaMessage  MidiEvent  ShortMessage
@@ -74,36 +75,41 @@
 
 (defn display-logic
   "Format a logic script numbered NUM to OUT"
-  [out num script]
-  (.write out (format ";; Logic Script %04d%n" num))
-  ;; for now, just output the bytes...
-  (dorun (eduction (partition-all 16)
-                   (map (fn [bs]
-                          (.write out (pr-str bs))
-                          (.write out (format "%n"))))
-                   (:byte-codes script)))
-          
-  ;; now give the table of strings...
-  (.write out "\n;; String Table:\n")
-  (dorun (map-indexed
-          (fn [i txt] (.write out (format "%02d: %s%n" (inc i) txt)))
-          (:msgs script))))
+  [out script-info]
+  (binding [*out* out]
+    (printf ";; Logic Script %04d%n" (:script-num script-info))
+    ;; disassemble...
+    (dis/pprint (dis/disassemble (:source-bytes script-info) (:actions script-info))
+                script-info
+                0
+                "")
+    ;; now give the table of strings...
+    (printf "%n;; String Table: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~%n")
+    (dorun (map-indexed
+            (fn [i txt] (printf "%02d: %s%n" (inc i) txt))
+            (:source-msgs script-info)))))
 
 (defn process-logics
   "Arrange to write the selected logic resources to text files."
   [game-info out-dir nums]
   (stderr "Writing logic scripts to output dir.")
-  (dorun
-   (map (fn [num]
-          (let [fname (format "logic-%04d.txt" num)
-                script (res/load-logic game-info num)]
-            (if script
-              (do
-                (stderr "Writing" fname)
-                (with-open [w (io/writer (io/file out-dir fname))]
-                  (display-logic w num script)))
-              (stderr "Logic script" num "does not exist."))))
-        nums)))
+  (let [info-base { :actions  (dis/generate-actions (:version game-info))
+                   :objects (:objects game-info)
+                   :word-groups (res/generate-word-groups (:words game-info)) }]
+    (dorun
+     (map (fn [num]
+            (let [fname (format "logic-%04d.txt" num)
+                  script (res/load-logic game-info num)]
+              (if script
+                (do
+                  (stderr "Writing" fname)
+                  (with-open [w (io/writer (io/file out-dir fname))]
+                    (display-logic w (assoc info-base
+                                            :script-num num
+                                            :source-bytes (:byte-codes script)
+                                            :source-msgs  (:msgs script)))))
+                (stderr "Logic script" num "does not exist."))))
+          nums))))
 
 ;; ====== CSound Command
 (def csound-preamble
@@ -267,8 +273,10 @@ i 2  0  0  3 0.3     ;; left
       (stderr "Usage: extract [game-path] [opts]\n\n") (stderr (ap/help-text cmd-args))
       (System/exit 1))
     (let [game-info (res/load-game-info (or (first (:free-args args)) ".") false)
-          words     (when (:words args) (res/load-words-tok (:path game-info)))
-          objects   (when (:objects args) (res/load-objects (:path game-info) (:version game-info)))]
+          words     (when (or (:words args) (:logic args))
+                      (res/load-words-tok (:path game-info)))
+          objects   (when (or (:objects args) (:logic args))
+                      (res/load-objects (:path game-info) (:version game-info)))]
       ;; ok, now perform the needed actions
       (when (:info args)
         (display-info game-info))
@@ -281,7 +289,7 @@ i 2  0  0  3 0.3     ;; left
         (with-open [w (io/writer (io/file (:out args) "objects.csv"))]
           (display-objects w objects)))
       (when-let [logics (:logic args)]
-        (process-logics game-info
+        (process-logics (assoc game-info :words words :objects objects)
                         (:out args)
                         (if (zero? (count logics))
                           (range (count (:logics game-info)))
