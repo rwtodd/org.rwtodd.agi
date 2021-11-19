@@ -487,7 +487,7 @@ indention INDENT using INFO for extra data. Returns the next location."))
       ;; there is no easy way to tell which one is more pleasing, so I just use 
       ;; the greedy approach and use structured IF's until it breaks.  Again, there 
       ;; are very few of these in practice so it works out OK.
-      (->UnlessGotoInstruction tst (->GotoInstruction then-end))
+      (->UnlessGotoInstruction tst (->GotoInstruction then-len))
 
       ;; ok, there is room for a THEN
       (let [else-len (if (and (> then-len 3) (== (read-8 src (- then-end 3)) 0xfe))
