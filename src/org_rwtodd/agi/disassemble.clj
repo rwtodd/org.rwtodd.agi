@@ -167,7 +167,7 @@ indention INDENT using INFO for extra data. Returns the next location."))
       ;; collect the args and any extra info
       (let [arg-vals (map #(bit-and % 0xff)
                           (aslice (:source-bytes info) (inc base) (+ base 1 args)))
-            arg-types (map #(bit-and (bit-shift-left atype (* % 8)) 0x0f) (range args))
+            arg-types (map #(bit-and (bit-shift-left atype (* % 4)) 0x0f) (range args))
             indent    (if (.isBlank indent) indent (.repeat " " (.length indent)))]
         (printf "(%s)%n"
                 (apply str (interpose \, (map (fn [v t] (format "%s%d"
@@ -479,7 +479,7 @@ indention INDENT using INFO for extra data. Returns the next location."))
         then-start (+ cur (byte-size tst) 3)
         then-len   (read-16-le src (- then-start 2))
         then-end   (+ then-start then-len)]
-    (if (>= then-end end)
+    (if (> then-end end)
       ;; OK, we ran out of room for the THEN section of our code... so rather than making
       ;; this an IF-THEN statement, it needs to be an UNLESS (test) GOTO statement.
       ;; Fortunately, these are rare... There are cases where it would be better to
