@@ -99,7 +99,7 @@ indention INDENT using INFO for extra data. Returns the next location."))
       (let [base (pprint true-path info (+ base 3) further)
             base (if (nil? false-path)
                    base
-                   (do (printf "%04X: %s} else {%n" base indent)
+                   (do (printf "%04X: %s} ELSE {%n" base indent)
                        (pprint false-path info (+ base 3) further)))]
         (printf "      %s}%n" indent)
         base))))
@@ -167,7 +167,7 @@ indention INDENT using INFO for extra data. Returns the next location."))
       ;; collect the args and any extra info
       (let [arg-vals (map #(bit-and % 0xff)
                           (aslice (:source-bytes info) (inc base) (+ base 1 args)))
-            arg-types (map #(bit-and (bit-shift-left atype (* % 4)) 0x0f) (range args))
+            arg-types (map #(bit-and (bit-shift-right atype (* % 4)) 0x0f) (range args))
             indent    (if (.isBlank indent) indent (.repeat " " (.length indent)))]
         (printf "(%s)%n"
                 (apply str (interpose \, (map (fn [v t] (format "%s%d"
