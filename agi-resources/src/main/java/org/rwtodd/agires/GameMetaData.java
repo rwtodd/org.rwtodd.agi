@@ -6,7 +6,7 @@ import java.nio.file.Path;
  * Represents an ability to pull metadata (version string, etc) about a game.
  * Separated as an interface to enable mocking/testing etc.
  *
- * @author rwtodd
+ * @author Richard Todd
  */
 public interface GameMetaData {
 
@@ -33,7 +33,15 @@ public interface GameMetaData {
      * @return the path.
      */
     Path getGamePath();
-    
+
+    /**
+     * Get the game's decryption key.  For Sierra games, it will be "AVIS DURGAN".  Other systems
+     * may have other keys, so it's natural to store it with the overall game prefix/version/path info.
+     *
+     * @return the byte array to use to decrypt game data.
+     */
+    byte[] getDecryptionKey();
+
     /**
      * Asks if the game version is 3 or higher.
      * @return true for yes, false for no.
@@ -45,14 +53,14 @@ public interface GameMetaData {
      * @return true for yes, false for no.
      */
     default boolean isBeforeV3() { return getVersion() < 3.0; }
-    
+
     /**
      * A utility method to get a numeric version number from the version string.
      * @param versionString a string representation of an engine version
      * @return the numeric equivalent of the input
-     * @throws AGIException if there is a problem converting the version string.
+     * @throws AgiException if there is a problem converting the version string.
      */
-    static double deriveNumericVersion(final String versionString) throws AGIException {
+    static double deriveNumericVersion(final String versionString) throws AgiException {
         // convert the string version to a number
         try {
             String looksLikeDouble = versionString;
@@ -61,7 +69,7 @@ public interface GameMetaData {
             }
             return Double.valueOf(looksLikeDouble);
         } catch (NumberFormatException nfe) {
-            throw new AGIException("Somehow extracted a bad version #" + versionString, nfe);
+            throw new AgiException("Somehow extracted a bad version #" + versionString, nfe);
         }
     }
     

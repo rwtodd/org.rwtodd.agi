@@ -1,8 +1,8 @@
 package agiext.disassembler;
 
 import java.util.List;
-import agiext.extractor.ObjectDictionary;
-import agiext.extractor.WordDictionary;
+import org.rwtodd.agires.AgiDictionary;
+import org.rwtodd.agires.AgiObject;
 import org.rwtodd.agires.LogicResource;
 
 /**
@@ -12,15 +12,15 @@ import org.rwtodd.agires.LogicResource;
 public class LogicResourceScript implements LogicScript {
     private final InstructionDecoder idecoder;
     private final double agiVersion;
-    private final WordDictionary words;
-    private final ObjectDictionary objects;
+    private final AgiDictionary words;
+    private final List<AgiObject> objects;
     private LogicResource resource;
     
-    public LogicResourceScript(double agiVersion, WordDictionary wd, ObjectDictionary od) {
+    public LogicResourceScript(double agiVersion, AgiDictionary wd, List<AgiObject> od) {
         this(agiVersion, wd, od, null);
     }
     
-    public LogicResourceScript(double agiVersion, WordDictionary wd, ObjectDictionary od, LogicResource lr) {
+    public LogicResourceScript(double agiVersion, AgiDictionary wd, List<AgiObject> od, LogicResource lr) {
         this.agiVersion = agiVersion;
         words = wd;
         objects = od;
@@ -48,15 +48,15 @@ public class LogicResourceScript implements LogicScript {
     }
 
     @Override
-    public List<String> getWordGroup(int group) {
-        return words.lookupGroup(group);
+    public Iterable<String> getWordGroup(int group) {
+        return words.idToWords(group);
     }
 
     @Override
-    public ObjectDictionary.Entry getObject(int num) {
-        return objects.get(num);
+    public AgiObject getObject(int num) {
+        AgiObject result = objects.get(num);
+        return (result != null) ? result : new AgiObject("Non-existent Object!", -1);
     }
-
 
     @Override
     public double getAGIVersion() {

@@ -79,7 +79,7 @@ public class PicResource {
         currentPattern = SolidPenPattern.INSTANCE;
     }
 
-    public void build(final Builder b) throws AGIException {
+    public void build(final Builder b) throws AgiException {
         try {
             int picColor = -1; // -1 means nothing
             int priColor = -1; // -1 means nothing
@@ -113,19 +113,19 @@ public class PicResource {
                         idx = drawPen(b, picColor, priColor, idx);
                     case 0xff -> {
                         if (idx != data.length) {
-                            throw new AGIException("Extraneous data after end of PIC!");
+                            throw new AgiException("Extraneous data after end of PIC!");
                         }
                         b.endPicture();
                     }
                     default ->
-                        throw new AGIException("Malformed PIC resource -- saw " + Byte.toString(data[idx - 1]));
+                        throw new AgiException("Malformed PIC resource -- saw " + Byte.toString(data[idx - 1]));
 
                 }
             }
-        } catch (AGIException agie) {
+        } catch (AgiException agie) {
             throw agie;
         } catch (Exception e) {
-            throw new AGIException("Error while parsing PIC", e);
+            throw new AgiException("Error while parsing PIC", e);
         }
     }
 

@@ -1,42 +1,24 @@
-package org.rwtodd.agires;
+package org.rwtodd.agires.restypes;
+
+import org.rwtodd.agires.AgiDictionary;
+import org.rwtodd.agires.AgiException;
 
 /**
  * Represents the contents of an AGI WORDS.TOK file.
  *
  * @author rwtodd
  */
-public class WordsResource {
+public abstract class WordsResource {
 
-    /**
-     * An interface for accepting events from a WordsResource, with the intent
-     * of building whatever derived object from the data the client needs. This
-     * takes the tedium of parsing the source bytes and encapsulates it away
-     * from the clients.
-     */
-    public static interface Builder {
-
-        void wordsStart();
-
-        void word(String word, int group);
-
-        void wordsEnd();
-    }
-
-    private final byte[] data;
-
-    public WordsResource(final byte[] src) {
-        data = src;
-    }
-
-    public void build(final Builder b) throws AGIException {
+    public static AgiDictionary build(final byte[] data) throws AgiException {
+        final var answer = new AgiDictionary();
         final var buffer = new StringBuilder(32);
         try {
-            b.wordsStart();
             for (int idx = (data[1]&0xff); idx < data.length;) {
                 // compute the prefix
                 final int toSkip = data[idx++];
                 if (toSkip > buffer.length()) {
-                    throw new AGIException("Malformed WORDS.TOK: prefix larger than last word!");
+                    throw new AgiException("Malformed WORDS.TOK: prefix larger than last word!");
                 }
                 buffer.setLength(toSkip);
                 
@@ -54,13 +36,13 @@ public class WordsResource {
                 final int groupNumber = ((data[idx]&0xff)<<8)|(data[idx+1]&0xff);
                 idx+=2;
                 
-                b.word(buffer.toString(), groupNumber);
+                answer.addWord(buffer.toString(), groupNumber);
             }
-            b.wordsEnd();
-        } catch (AGIException agie) {
+            return answer;
+        } catch (AgiException agie) {
             throw agie;
         } catch (Exception e) {
-            throw new AGIException("Error while parsing WORDS.TOK", e);
+            throw new AgiException("Error while parsing WORDS.TOK", e);
         }
     }
 

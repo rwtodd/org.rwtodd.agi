@@ -1,5 +1,7 @@
 package org.rwtodd.agires;
 
+import org.rwtodd.agires.util.Util;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -15,9 +17,14 @@ public class OnDiskMetaData implements GameMetaData {
     private final String prefixString;
     private final double version;
     private final Path gamePath;
+    private final byte[] decryptionKey;
 
-    public OnDiskMetaData(final Path gamePath) throws AGIException {
+    public OnDiskMetaData(final Path gamePath) throws AgiException {
         this.gamePath = gamePath;
+
+        // assume it's a sierra game until I have some future way to determine that it's not...
+        decryptionKey = Util.AVIS;
+
         versionString = OnDiskMetaData.extractVersion(gamePath);
         version = GameMetaData.deriveNumericVersion(versionString);
         prefixString = (version > 2.9999)
@@ -45,14 +52,17 @@ public class OnDiskMetaData implements GameMetaData {
         return version;
     }
 
+    @Override
+    public byte[] getDecryptionKey() { return decryptionKey; }
+
     /**
      * Search the bytes of AGIDATA.OVL for a version number.
      *
      * @param agidata the bytes of AGIDATA.OVL
      * @return a string of the version number
-     * @throws AGIException if it can't find the version number
+     * @throws AgiException if it can't find the version number
      */
-    private static String extractVersion(byte[] agidata) throws AGIException {
+    private static String extractVersion(byte[] agidata) throws AgiException {
         final var buffer = new StringBuilder(16);
         for (final var b : agidata) {
             final int len = buffer.length();
@@ -75,7 +85,7 @@ public class OnDiskMetaData implements GameMetaData {
                 buffer.setLength(0);
             }
         }
-        throw new AGIException("End of AGIDATA.OVL without finding version!");
+        throw new AgiException("End of AGIDATA.OVL without finding version!");
     }
 
     /**
@@ -83,16 +93,16 @@ public class OnDiskMetaData implements GameMetaData {
      *
      * @param gamePath the location of AGIDATA.OVL
      * @return a string of the version number
-     * @throws AGIException if it can't find the version number
+     * @throws AgiException if it can't find the version number
      */
-    private static String extractVersion(Path gamePath) throws AGIException {
+    private static String extractVersion(Path gamePath) throws AgiException {
         try {
             final var ovlFile = gamePath.resolve("AGIDATA.OVL");
             final var agidata
                     = Files.readAllBytes(ovlFile);
             return extractVersion(agidata);
         } catch (IOException ioe) {
-            throw new AGIException("Failed to extract AGI version!", ioe);
+            throw new AgiException("Failed to extract AGI version!", ioe);
         }
     }
 
@@ -101,9 +111,9 @@ public class OnDiskMetaData implements GameMetaData {
      *
      * @param gamePath
      * @return the prefix string
-     * @throws AGIException when the prefix cannot be determined
+     * @throws AgiException when the prefix cannot be determined
      */
-    private static String determinePrefix(final Path gamePath) throws AGIException {
+    private static String determinePrefix(final Path gamePath) throws AgiException {
         try (final var matches = Files.newDirectoryStream(gamePath, "*VOL.0")) {
             for (final var match : matches) {
                 if (!Files.isReadable(match)) {
@@ -116,9 +126,9 @@ public class OnDiskMetaData implements GameMetaData {
                     return pfx;
                 }
             }
-            throw new AGIException("Could not find <pfx>DIR and <pfx>VOL.0 files (uppercase) to get game prefix!");
+            throw new AgiException("Could not find <pfx>DIR and <pfx>VOL.0 files (uppercase) to get game prefix!");
         } catch (Throwable tr) {
-            throw new AGIException("Error while finding V3 game prefix!", tr);
+            throw new AgiException("Error while finding V3 game prefix!", tr);
         }
     }
 

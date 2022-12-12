@@ -38,9 +38,9 @@ class FileCache implements Closeable {
      *
      * @param p the path to the file.
      * @return the opened file.
-     * @throws AGIException if there is a problem getting the file.
+     * @throws AgiException if there is a problem getting the file.
      */
-    synchronized RandomAccessFile getFile(final Path p) throws AGIException {
+    synchronized RandomAccessFile getFile(final Path p) throws AgiException {
         var f = openFiles.get(p);
         try {
             if (f == null) {
@@ -50,7 +50,7 @@ class FileCache implements Closeable {
             }
             f.timeStamp = Instant.now();
         } catch (FileNotFoundException fnf) {
-            throw new AGIException("Could not find file " + p, fnf);
+            throw new AgiException("Could not find file " + p, fnf);
         }
         maybeCleanup();
         return f.file;

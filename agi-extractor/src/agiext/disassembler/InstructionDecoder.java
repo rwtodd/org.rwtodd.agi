@@ -1,6 +1,6 @@
 package agiext.disassembler;
 
-import org.rwtodd.agires.AGIException;
+import org.rwtodd.agires.AgiException;
 
 /**
  * A decoder for AGI Logic bytecode instructions.
@@ -231,7 +231,7 @@ public class InstructionDecoder {
         code176 = new BasicInstruction("unknown176", (version == 3.002086) ? 1 : 0, 0x0);
     }
 
-    protected Instruction lookupTest(int code) throws AGIException {
+    protected Instruction lookupTest(int code) throws AgiException {
         try {
             return switch (code) {
                 case 14 ->
@@ -240,11 +240,11 @@ public class InstructionDecoder {
                     tests[code];
             };
         } catch (Exception e) {
-            throw new AGIException("Can't lookup test bytecode: " + code, e);
+            throw new AgiException("Can't lookup test bytecode: " + code, e);
         }
     }
 
-    protected Instruction lookupAction(int code) throws AGIException {
+    protected Instruction lookupAction(int code) throws AgiException {
         try {
             return switch (code) {
                 case 134 ->
@@ -259,22 +259,22 @@ public class InstructionDecoder {
                     actions[code];
             };
         } catch (Exception e) {
-            throw new AGIException("Can't lookup action bytecode: " + code, e);
+            throw new AgiException("Can't lookup action bytecode: " + code, e);
         }
     }
 
     /* parse a goto statement 0xFE */
-    protected Instruction decodeGotoStatement(final LogicScript script, int start, int end) throws AGIException {
+    protected Instruction decodeGotoStatement(final LogicScript script, int start, int end) throws AgiException {
         try {
             // signed 16 bit le number...
             int tgt = (short) (script.getRawByte(start) | (script.getRawByte(start + 1) << 8));
             return new GotoInstruction(tgt);
         } catch (Exception e) {
-            throw new AGIException("Error decoding 0xFE GOTO", e);
+            throw new AgiException("Error decoding 0xFE GOTO", e);
         }
     }
 
-    protected Instruction decodeSimpleTest(int byteCode, final LogicScript script, int start, int end) throws AGIException {
+    protected Instruction decodeSimpleTest(int byteCode, final LogicScript script, int start, int end) throws AgiException {
         return switch (byteCode) {
             case 14 -> {  /* SAID() test */
                 final int count = script.getRawByte(start++);
@@ -284,7 +284,7 @@ public class InstructionDecoder {
                     start += 2;
                 }
                 if (start > end) {
-                    throw new AGIException("Out of room when reading SAID test! loc=" + start);
+                    throw new AgiException("Out of room when reading SAID test! loc=" + start);
                 }
                 yield new SaidInstruction(wordGroups);
             }
@@ -299,7 +299,7 @@ public class InstructionDecoder {
         };
     }
 
-    protected Instruction decodeTestStream(int delim, final LogicScript script, int start, int end) throws AGIException {
+    protected Instruction decodeTestStream(int delim, final LogicScript script, int start, int end) throws AgiException {
         final var tests = new CompoundInstruction();
         while (start < end) {
             final var bc = script.getRawByte(start++);
@@ -315,7 +315,7 @@ public class InstructionDecoder {
     }
 
     /* parse an IF structure 0xFF */
-    protected Instruction decodeIfStatement(final LogicScript script, int start, int end) throws AGIException {
+    protected Instruction decodeIfStatement(final LogicScript script, int start, int end) throws AgiException {
         final var tst = decodeTestStream(0xff, script, start, end);
         start += tst.getLength() + 1;
         final var thenLen = script.getRawByte(start) | (script.getRawByte(start + 1) << 8);
@@ -350,7 +350,7 @@ public class InstructionDecoder {
         return new IfAndInstruction(tst, thenIns, elseIns);
     }
 
-    protected Instruction decodeOne(final LogicScript script, int start, int end) throws AGIException {
+    protected Instruction decodeOne(final LogicScript script, int start, int end) throws AgiException {
         final var bc = script.getRawByte(start);
         return switch (bc) {
             case 0xFE ->
@@ -362,7 +362,7 @@ public class InstructionDecoder {
         };
     }
 
-    public Instruction decode(final LogicScript script, int start, int end) throws AGIException {
+    public Instruction decode(final LogicScript script, int start, int end) throws AgiException {
         final var disassembled = new CompoundInstruction();
         try {
             while (start < end) {
@@ -370,10 +370,10 @@ public class InstructionDecoder {
                 disassembled.add(ins);
                 start += ins.getLength();
             }
-        } catch (AGIException agie) {
+        } catch (AgiException agie) {
             throw agie;
         } catch (Exception e) {
-            throw new AGIException("Error decoding instructions", e);
+            throw new AgiException("Error decoding instructions", e);
         }
         return disassembled.compress();
     }

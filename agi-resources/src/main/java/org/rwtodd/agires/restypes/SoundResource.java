@@ -1,60 +1,31 @@
-package org.rwtodd.agires;
+package org.rwtodd.agires.restypes;
+
+import org.rwtodd.agires.AgiException;
+import org.rwtodd.agires.Builders.SoundBuilder;
 
 /**
  * Represents a 4-voice AGI sound resource. It does minimal interpretation and
  * validation of the resource, and works with a client-provided Builder to build
  * the representation of the sound needed by the client.
  *
- * @author rwtodd
+ * @author Richard Todd
  */
 public class SoundResource {
 
-    /**
-     * The two types of noise the tandy/PCJr can make.
-     */
-    public static enum NoiseType {
-        LINEAR, WHITE
-    };
-
-    /**
-     * An interface for accepting events from a SoundResource, with the intent
-     * of building whatever derived object from the data the client needs. This
-     * takes the tedium of parsing the source bytes and encapsulates it away
-     * from the clients.
-     */
-    public static interface Builder {
-
-        void soundStart(int number, String desc);
-
-        void voiceStart(int num);
-
-        void voiceNote(int time, int duration, int freq, int attenuation);
-
-        void voiceEnd();
-
-        void noiseStart();
-
-        void noiseNote(int time, int duration, int freq, int attenuation, NoiseType type);
-
-        void noiseEnd();
-
-        void soundEnd(int totalDuration);
-    }
-
     private final byte[] data;
     private final int resNumber;
-    private final DirEntry dirEntry;
-    
-    SoundResource(final int number, final DirEntry de, final byte[] src) {
+    private final String description;
+
+    public SoundResource(final int number, final String desc, final byte[] src) {
         resNumber = number;
-        dirEntry = de;
+        description = (desc == null) ? "AGI Sound Resource" : desc;
         data = src;
     }
 
-    public void build(final Builder b) throws AGIException {
+    public void build(final SoundBuilder b) throws AgiException {
         int totalLength = 0;
         try {
-            b.soundStart(resNumber, dirEntry.toString());
+            b.soundStart(resNumber, description);
 
             totalLength = Math.max(totalLength, streamVoice(1, b));
             totalLength = Math.max(totalLength, streamVoice(2, b));
@@ -63,20 +34,20 @@ public class SoundResource {
 
             b.soundEnd(totalLength);
         } catch (Exception e) {
-            throw new AGIException("Error while parsing a sound resource", e);
+            throw new AgiException("Error while parsing a sound resource", e);
         }
     }
 
-    private void checkVoiceLength(int offset, int len) throws AGIException {
+    private void checkVoiceLength(int offset, int len) throws AgiException {
         final int remainder = len % 5;
         if ((remainder == 0)
                 || ((remainder == 2) && (data[offset + len - 1] == -1) && (data[offset + len - 2] == -1))) {
             return;
         }
-        throw new AGIException("Sound has irregular voice of length " + len);
+        throw new AgiException("Sound has irregular voice of length " + len);
     }
 
-    private int streamVoice(final int num, final Builder b) throws AGIException {
+    private int streamVoice(final int num, final SoundBuilder b) throws Exception {
         int curTime = 0;
         int audibleLength = 0;
 
@@ -104,7 +75,7 @@ public class SoundResource {
         return audibleLength;
     }
 
-    private int streamNoise(final Builder b) throws AGIException {
+    private int streamNoise(final SoundBuilder b) throws Exception {
         int curTime = 0;
         int audibleLength = 0;
 
@@ -114,9 +85,9 @@ public class SoundResource {
         b.noiseStart();
 
         while ((idx + 4) < end) {
-            final NoiseType nt = ((data[idx + 3] & 0x04) == 0)
-                    ? NoiseType.LINEAR
-                    : NoiseType.WHITE;
+            final var nt = ((data[idx + 3] & 0x04) == 0)
+                    ? SoundBuilder.NoiseType.LINEAR
+                    : SoundBuilder.NoiseType.WHITE;
             final int startTime = curTime;
             final int attenuation = data[idx + 4] & 0x0f;
             final int duration = (data[idx] & 0xff) | ((data[idx + 1] & 0xff) << 8);

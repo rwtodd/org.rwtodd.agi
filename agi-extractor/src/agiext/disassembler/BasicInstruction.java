@@ -97,7 +97,7 @@ public class BasicInstruction implements Instruction {
                         }
                         break;
                     case ARG_INV:
-                        description = script.getObject(aval).getName();
+                        description = script.getObject(aval).name();
                         if (description != null) {
                             extraInfo.append(
                                     String.format(

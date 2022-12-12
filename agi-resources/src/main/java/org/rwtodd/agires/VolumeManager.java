@@ -1,6 +1,7 @@
 package org.rwtodd.agires;
 
 import java.io.Closeable;
+import java.io.IOException;
 
 /**
  * This is an interface for managing the stack of open volume files, ensuring
@@ -8,7 +9,6 @@ import java.io.Closeable;
  * @author rwtodd
  */
 public interface VolumeManager extends Closeable {
-    
     static VolumeManager createDefault(GameMetaData meta) {
       if (meta.isBeforeV3()) {
             return new V2VolumeManager(meta.getGamePath());
@@ -17,5 +17,7 @@ public interface VolumeManager extends Closeable {
         }
     }
         
-    byte[] getResource(DirEntry de) throws AGIException, ResourceNotPresentException;
+    byte[] getResource(DirEntry de) throws AgiException, ResourceNotPresentException;
+    byte[] getWordsData() throws IOException;
+    byte[] getObjectsData() throws IOException;
 }

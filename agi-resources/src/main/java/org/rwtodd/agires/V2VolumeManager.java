@@ -1,6 +1,7 @@
 package org.rwtodd.agires;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
@@ -9,7 +10,6 @@ import java.nio.file.Path;
  * @author rwtodd
  */
 public class V2VolumeManager implements VolumeManager {
-
     private final FileCache fc;
     private final Path gamePath;
 
@@ -24,7 +24,7 @@ public class V2VolumeManager implements VolumeManager {
     }
             
     @Override
-    public byte[] getResource(DirEntry de) throws AGIException, ResourceNotPresentException {
+    public byte[] getResource(DirEntry de) throws AgiException, ResourceNotPresentException {
         if (!de.isPresent()) {
             throw new ResourceNotPresentException("Asking for resource that doesn't exist!");
         }
@@ -39,7 +39,7 @@ public class V2VolumeManager implements VolumeManager {
                 if ((header[0] != 0x12)
                         || (header[1] != 0x34) 
                         || (header[2] != de.getVolume())) {
-                    throw new AGIException("Bad resource header for " + de);
+                    throw new AgiException("Bad resource header for " + de);
                 }
 
                 // second, pull the resource bytes out of the file
@@ -48,9 +48,15 @@ public class V2VolumeManager implements VolumeManager {
                 raf.readFully(resource);
                 return resource;
             } catch (IOException ioe) {
-                throw new AGIException("Can't load resource " + de, ioe);
+                throw new AgiException("Can't load resource " + de, ioe);
             }
         }
     }
 
+    @Override public byte[] getWordsData() throws IOException {
+        return Files.readAllBytes(gamePath.resolve("WORDS.TOK"));
+    }
+    @Override public byte[] getObjectsData() throws IOException {
+        return Files.readAllBytes(gamePath.resolve("OBJECT"));
+    }
 }

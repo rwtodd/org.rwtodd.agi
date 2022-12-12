@@ -1,30 +1,32 @@
-package org.rwtodd.agires;
+package org.rwtodd.agires.util;
 
-import java.io.ByteArrayOutputStream;
+import org.rwtodd.agires.AgiException;
 
 /**
  * A set of static utility functions
  *
- * @author rwtodd
+ * @author Richard Todd
  */
-class Util {
+public class Util {
 
     // "Avis Durgan"
-    private static final byte[] AVIS
+    public static final byte[] AVIS
             = {65, 118, 105, 115, 32, 68, 117, 114, 103, 97, 110};
 
     /**
-     * Decode bytes against an XOR'ed code word. The bytes are altered in place.
+     * Decode bytes against an XOR'ed key. The bytes are altered in place.
      *
-     * @param code the code word(s)
+     * @param key the decryption key
      * @param src the source bytes (modified by this function)
+     * @param start the starting index in {@code src} to modify
+     * @param end the ending index in {@code src} to modify
      * @return the source bytes
      */
-    static byte[] decodeInPlace(final byte[] code, final byte[] src, final int start, final int end) {
+    public static byte[] decodeInPlace(final byte[] key, final byte[] src, final int start, final int end) {
         int cIdx = 0;
         for (int sIdx = start; sIdx < end; ++sIdx) {
-            src[sIdx] ^= code[cIdx];
-            if (++cIdx == code.length) {
+            src[sIdx] ^= key[cIdx];
+            if (++cIdx == key.length) {
                 cIdx = 0;
             }
         }
@@ -32,27 +34,13 @@ class Util {
     }
 
     /**
-     * Decode source bytes, in place, with Sierra-standard codeword "Avis
-     * Durgan."
-     *
-     * @param src source bytes (modified in place)
-     * @param start where to start in `src`
-     * @param end where to stop in `src` (exclusive).
+     * Decode bytes against an XOR'ed key.  All {@code src} bytes are altered in place.
+     * @param key the decryption key
+     * @param src the source bytes (modified by the function)
      * @return the source bytes
      */
-    static byte[] decodeInPlace(final byte[] src, final int start, final int end) {
-        return decodeInPlace(AVIS, src, start, end);
-    }
-    
-    /**
-     * Decode source bytes, in place, with Sierra-standard codeword "Avis
-     * Durgan."
-     *
-     * @param src source bytes (modified in place)
-     * @return the source bytes
-     */
-    static byte[] decodeInPlace(final byte[] src) {
-        return decodeInPlace(AVIS, src, 0, src.length);
+    public static byte[] decodeInPlace(final byte[] key, final byte[] src) {
+        return decodeInPlace(key, src, 0, src.length);
     }
 
     /**
@@ -63,7 +51,7 @@ class Util {
      * @param offs the start of the string, in src
      * @return A string made of bytes copied from the src array.
      */
-    static String asciizString(final byte[] src, final int offs) {
+    public static String asciizString(final byte[] src, final int offs) {
         int zero = offs;
         while ((zero < src.length) && (src[zero] != 0)) {
             ++zero;
@@ -77,9 +65,9 @@ class Util {
      * @param src the compressed source bytes
      * @param expandedSize the expected size of the decompressed output
      * @return the decompressed results
-     * @throws AGIException when there is a problem expanding the src
+     * @throws AgiException when there is a problem expanding the src
      */
-    static byte[] lzwExpand(final byte[] src, final int expandedSize) throws AGIException {
+     public static byte[] lzwExpand(final byte[] src, final int expandedSize) throws AgiException {
         // keep track of our output
         final var output = new byte[expandedSize];
         int outIdx = 0;
@@ -169,7 +157,7 @@ class Util {
                     prefix[hi] = last;
                 }
             } else {
-                throw new AGIException("Malformed LZW resource!");
+                throw new AgiException("Malformed LZW resource!");
             }
 
             // STEP THREE: now get ready for the next loop
@@ -189,7 +177,7 @@ class Util {
 
         // make sure we got what we expected
         if (outIdx != output.length) {
-            throw new AGIException(
+            throw new AgiException(
                     String.format("LZW: resource was supposed to expand to %d bytes but only got %d!",
                             outIdx,
                             output.length));

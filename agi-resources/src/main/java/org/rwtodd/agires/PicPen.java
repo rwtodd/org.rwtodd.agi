@@ -4,7 +4,7 @@ package org.rwtodd.agires;
  * The base class for all the various types of PIC resource pens.
  * @author rwtodd
  */
-abstract class PicPen {
+sealed abstract class PicPen permits RectanglePen, CirclePen {
 
     /* the size class of the pen (0 to 7), as given in a PIC resource. */
     protected int size = 0;
@@ -71,7 +71,7 @@ abstract class PicPen {
      * @param rownum the row in question
      * @return how many pixels to plot
      */
-    protected abstract int pixelstoPlot(int rownum);
+    protected abstract int pixelsToPlot(int rownum);
 
     /**
      * Draw the pen to the handler centered at x,y.
@@ -110,12 +110,80 @@ abstract class PicPen {
         // step 2, go through the shape, drawing it.
         final var iterator = pattern.iterator();
         for (int row = 0; row < numRows; ++row) {
-            final int skipped = pixelsToSkip(row), count = skipped + pixelstoPlot(row);
+            final int skipped = pixelsToSkip(row), count = skipped + pixelsToPlot(row);
             for (int column = skipped; column < count; ++column) {
                 if (iterator.hasNext() && iterator.next()) {
                     b.plotPoint(left + column, top + row, picColor, priColor);
                 }
             }
         }
+    }
+}
+
+/**
+ * A rectangular pen.
+ * @author Richard Todd
+ */
+final class RectanglePen extends PicPen {
+
+    @Override
+    protected int pixelsToSkip(int rownum) { return 0; }
+
+    @Override
+    protected int pixelsToPlot(int rownum) { return size+1; }
+
+}
+
+
+/**
+ * A PicPen that draws circles.
+ * @author rwtodd
+ */
+sealed class CirclePen extends PicPen permits V3CirclePen {
+
+    private static final int[][] SKIPS = new int[][] {
+            {0},  // width = 1
+            {0,0,0}, // width = 2
+            {1,0,0,0,1}, // width = 3
+            {1,1,0,0,0,1,1}, // width= 4
+            {2,1,0,0,0,0,0,1,2}, //width = 5
+            {2,1,1,1,0,0,0,1,1,1,2}, // width = 6
+            {2,1,1,1,0,0,0,0,0,1,1,1,2}, //width = 7
+            {3,2,1,1,1,0,0,0,0,0,1,1,1,2,3} // width = 8
+    };
+    private static final int[][] PLOTS = new int[][] {
+            {1},   // width = 1
+            {2,2,2}, //width=2
+            {1,3,3,3,1}, //width=3
+            {2,2,4,4,4,2,2},  //*width=4
+            {1,3,5,5,5,5,5,3,1}, //width=5
+            {2,4,4,4,6,6,6,4,4,4,2}, //width=6
+            {3,5,5,5,7,7,7,7,7,5,5,5,3}, //width=7
+            {2,4,6,6,6,8,8,8,8,8,6,6,6,4,2}, //width=8
+    };
+
+
+    @Override
+    protected int pixelsToSkip(int rownum) {
+        return SKIPS[size][rownum];
+    }
+
+    @Override
+    protected int pixelsToPlot(int rownum) {
+        return PLOTS[size][rownum];
+    }
+}
+
+/**
+ * AGI V3 draws slightly different circles of size 1
+ *
+ * @author rwtodd
+ */
+final class V3CirclePen extends CirclePen {
+
+    @Override
+    protected int pixelsToPlot(int rownum) {
+        if((size == 1)&&(rownum!=1)) return 0;
+        return super.pixelsToPlot(rownum);
     }
 }

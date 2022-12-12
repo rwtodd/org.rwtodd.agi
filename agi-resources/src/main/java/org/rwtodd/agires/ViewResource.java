@@ -1,5 +1,7 @@
 package org.rwtodd.agires;
 
+import org.rwtodd.agires.util.Util;
+
 import java.util.Arrays;
 
 /**
@@ -65,12 +67,12 @@ public class ViewResource {
         data = src;
     }
     
-    public void build(final Builder b) throws AGIException {
+    public void build(final Builder b) throws AgiException {
         final int loopCount = data[2]&0xff;
         final int descLoc = (data[3]&0xff)|((data[4]&0xff)<<8);
         int loopDirectoryIdx = 5;
         
-        final String desc = (descLoc > 0)?Util.asciizString(data, descLoc):null;
+        final String desc = (descLoc > 0)? Util.asciizString(data, descLoc):null;
         
         b.viewStart(viewNum, loopCount, desc);
         

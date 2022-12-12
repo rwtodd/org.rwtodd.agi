@@ -1,6 +1,9 @@
 package org.rwtodd.agires;
 
+import org.rwtodd.agires.util.Util;
+
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
@@ -26,7 +29,7 @@ public class V3VolumeManager implements VolumeManager {
     }
 
     @Override
-    public byte[] getResource(DirEntry de) throws AGIException, ResourceNotPresentException {
+    public byte[] getResource(DirEntry de) throws AgiException, ResourceNotPresentException {
         if (!de.isPresent()) {
             throw new ResourceNotPresentException("Asking for resource that doesn't exist!");
         }
@@ -44,7 +47,7 @@ public class V3VolumeManager implements VolumeManager {
                 if ((header[0] != 0x12)
                         || (header[1] != 0x34)
                         || ((header[2] & 0x7f) != de.getVolume())) {
-                    throw new AGIException("Bad resource header for " + de);
+                    throw new AgiException("Bad resource header for " + de);
                 }
                 pic_compressed = (header[2] & 0x80) != 0;
 
@@ -54,7 +57,7 @@ public class V3VolumeManager implements VolumeManager {
                 resource = new byte[lzwlen];
                 raf.readFully(resource);
             } catch (IOException ioe) {
-                throw new AGIException("Can't load resource " + de, ioe);
+                throw new AgiException("Can't load resource " + de, ioe);
             }
         }
         // we have the resourcce now, decode it if necessary...
@@ -68,7 +71,7 @@ public class V3VolumeManager implements VolumeManager {
         return resource;
     }
 
-    private static byte[] picExpand(final byte[] src, final int reslen) throws AGIException {
+    private static byte[] picExpand(final byte[] src, final int reslen) throws AgiException {
         final var expanded = new byte[reslen];
 
         final int lastSrcIdx = src.length;
@@ -78,7 +81,7 @@ public class V3VolumeManager implements VolumeManager {
         for (int idx = 0; idx < reslen; ++idx) {
             // first, make sure we didn't overrun
             if (srcIdx >= lastSrcIdx) {
-                throw new AGIException("Out of src bytes while expanding V3 PIC.");
+                throw new AgiException("Out of src bytes while expanding V3 PIC.");
             }
 
             if (nextHalf) {
@@ -97,7 +100,7 @@ public class V3VolumeManager implements VolumeManager {
                     // we need a full byte
                     int composedByte = (src[srcIdx++] & 0x0f) << 4;
                     if (srcIdx >= lastSrcIdx) {
-                        throw new AGIException("Out of src bytes while expanding V3 PIC.");
+                        throw new AgiException("Out of src bytes while expanding V3 PIC.");
                     }
                     composedByte |= ((src[srcIdx] & 0xf0) >> 4);
                     nxtByte = (byte) composedByte;
@@ -118,10 +121,16 @@ public class V3VolumeManager implements VolumeManager {
 
         // check to see if we read the whole source
         if (srcIdx < (lastSrcIdx - 1)) {
-            throw new AGIException("Extra source bytes when expanding PIC!");
+            throw new AgiException("Extra source bytes when expanding PIC!");
         }
 
         return expanded;
     }
 
+    @Override public byte[] getWordsData() throws IOException {
+        return Files.readAllBytes(gamePath.resolve("WORDS.TOK"));
+    }
+    @Override public byte[] getObjectsData() throws IOException {
+        return Files.readAllBytes(gamePath.resolve("OBJECT"));
+    }
 }

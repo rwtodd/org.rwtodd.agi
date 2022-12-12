@@ -5,14 +5,15 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import org.rwtodd.agires.SoundResource;
+
+import org.rwtodd.agires.Builders.SoundBuilder;
 
 /**
  * A handler for sound resources which output CSound scores.
  *
  * @author rwtodd
  */
-class CSoundBuilder implements SoundResource.Builder, Closeable {
+class CSoundBuilder implements SoundBuilder, Closeable {
 
     private final PrintWriter out;
     private int curVoice;
@@ -74,7 +75,7 @@ class CSoundBuilder implements SoundResource.Builder, Closeable {
     }
 
     @Override
-    public void noiseNote(int time, int duration, int freq, int attenuation, SoundResource.NoiseType type) {
+    public void noiseNote(int time, int duration, int freq, int attenuation, SoundBuilder.NoiseType type) {
         final int inst = switch (type) {
             case WHITE ->
                 21;

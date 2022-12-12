@@ -94,7 +94,7 @@ public class BufferedImageViewBuilder implements ViewResource.Builder {
         return cells[loop][cell].getImage();
     }
 
-    private void writeGIF(final Path imgPath, final BufferedImage img, int scaleFactor) throws AGIException {
+    private void writeGIF(final Path imgPath, final BufferedImage img, int scaleFactor) throws AgiException {
         try {
             final int scaledWidth = img.getWidth() * 2 * scaleFactor; // *2 because of 160 width originals
             final int scaledHeight = img.getHeight() * 6 / 5 * scaleFactor; // 6/5 aspect ratio correction
@@ -106,11 +106,11 @@ public class BufferedImageViewBuilder implements ViewResource.Builder {
                     scaledImg, "GIF",
                     imgPath.toFile());
         } catch (Exception e) {
-            throw new AGIException("Error writing GIF", e);
+            throw new AgiException("Error writing GIF", e);
         }
     }
 
-    public void writeToDisk(final Path imgPath, int loop, int cell, int scaleFactor) throws AGIException {
+    public void writeToDisk(final Path imgPath, int loop, int cell, int scaleFactor) throws AgiException {
         writeGIF(imgPath, cells[loop][cell].getImage(), scaleFactor);
     }
 

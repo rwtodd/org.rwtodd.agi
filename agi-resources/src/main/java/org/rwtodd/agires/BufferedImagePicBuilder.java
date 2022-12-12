@@ -180,7 +180,7 @@ public class BufferedImagePicBuilder implements PicResource.Builder {
         priRaster = null;
     }
 
-    private void writeGIF(final Path imgPath, final BufferedImage img, int scaleFactor) throws AGIException {
+    private void writeGIF(final Path imgPath, final BufferedImage img, int scaleFactor) throws AgiException {
         try {
             final int scaledWidth = img.getWidth() * 2 * scaleFactor; // *2 because of 160 width originals
             final int scaledHeight = (int)(img.getHeight() * 6.0 / 5.0 * scaleFactor); // 6/5 aspect ratio correction
@@ -193,15 +193,15 @@ public class BufferedImagePicBuilder implements PicResource.Builder {
                     scaledImg, "GIF",
                     imgPath.toFile());
         } catch (Exception e) {
-            throw new AGIException("Error writing GIF", e);
+            throw new AgiException("Error writing GIF", e);
         }
     }
 
-    public void writeImageToGIF(Path imgPath, int scale) throws AGIException {
+    public void writeImageToGIF(Path imgPath, int scale) throws AgiException {
         writeGIF(imgPath, pictureImage, scale);
     }
 
-    public void writePriorityToGIF(Path imgPath, int scale) throws AGIException {
+    public void writePriorityToGIF(Path imgPath, int scale) throws AgiException {
         writeGIF(imgPath, priorityImage, scale);
     }
 }

@@ -7,7 +7,7 @@ package org.rwtodd.agires;
  */
 public interface ResourceDirectory {
 
-    static ResourceDirectory createDefault(GameMetaData meta) throws AGIException {
+    static ResourceDirectory createDefault(GameMetaData meta) throws AgiException {
       if (meta.isBeforeV3()) {
             return new V2ResourceDirectory(meta.getGamePath());
         } else {

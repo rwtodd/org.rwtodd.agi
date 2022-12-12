@@ -3,9 +3,9 @@ package agiext.extractor;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Optional;
 import javax.sound.midi.InvalidMidiDataException;
-import org.rwtodd.agires.SoundResource;
+import org.rwtodd.agires.Builders.SoundBuilder;
+
 import javax.sound.midi.Sequence;
 import javax.sound.midi.Track;
 import javax.sound.midi.MetaMessage;
@@ -18,80 +18,55 @@ import javax.sound.midi.MidiSystem;
  *
  * @author rwtodd
  */
-class MidiBuilder implements SoundResource.Builder, Closeable {
+class MidiBuilder implements SoundBuilder, Closeable {
 
     private final Path outFile;
     private final Sequence seq;
     private Track currentTrack;
     private int channel;
-    private InvalidMidiDataException error;
 
     MidiBuilder(Path outfile) throws InvalidMidiDataException {
         outFile = outfile;
         seq = new Sequence(Sequence.PPQ, 60);
         currentTrack = null;
         channel = -1;
-        error = null;
-    }
-
-    /**
-     * Fetch any errors encountered with the MIDI stream during the building
-     * process. Errors are stored rather than thrown because the Builder
-     * interface doesn't allow for checked exceptions.
-     *
-     * @return the stored MIDI exception, if there was one.
-     */
-    public Optional<InvalidMidiDataException> getErrorState() {
-        return Optional.ofNullable(error);
     }
 
     @Override
-    public void soundStart(int num, String desc) {
+    public void soundStart(int num, String desc) throws InvalidMidiDataException {
         // create a name/tempo track...
         final var metaString = String.format("AGI Sound Resource %d (%s)", num, desc)
                 .getBytes(java.nio.charset.StandardCharsets.US_ASCII);
-        try {
-            final var tempoTrack = seq.createTrack();
-            tempoTrack.add(new MidiEvent(new MetaMessage(0x03, metaString, metaString.length), 0));
+        final var tempoTrack = seq.createTrack();
+        tempoTrack.add(new MidiEvent(new MetaMessage(0x03, metaString, metaString.length), 0));
 
-            /* set the tempo to 120BPM... which is the default but let's be precise */
-            final int tempo = 60000000 / 120;
-            tempoTrack.add(
-                    new MidiEvent(
-                            new MetaMessage(
-                                    0x51,
-                                    new byte[]{(byte) ((tempo >> 16) & 0xff), (byte) ((tempo >> 8) & 0xff), (byte) (tempo & 0xff)},
-                                    3),
-                            0));
+        /* set the tempo to 120BPM... which is the default but let's be precise */
+        final int tempo = 60000000 / 120;
+        tempoTrack.add(
+                new MidiEvent(
+                        new MetaMessage(
+                                0x51,
+                                new byte[]{(byte) ((tempo >> 16) & 0xff), (byte) ((tempo >> 8) & 0xff), (byte) (tempo & 0xff)},
+                                3),
+                        0));
 
-        } catch (InvalidMidiDataException imde) {
-            if (error == null) {
-                error = imde;
-            }
-        }
     }
 
     @Override
-    public void voiceStart(int num) {
+    public void voiceStart(int num) throws InvalidMidiDataException {
         currentTrack = seq.createTrack();
         ++channel;
         // name the track based on the voice/channel...
-        try {
             final var metaString = String.format("AGI Voice %d", channel)
                     .getBytes(java.nio.charset.StandardCharsets.US_ASCII);
             currentTrack.add(new MidiEvent(new MetaMessage(0x03, metaString, metaString.length), 0));
-        } catch (InvalidMidiDataException imde) {
-            if (error == null) {
-                error = imde;
-            }
-        }
     }
 
     /* constant needed for frequency to midi-note conversion */
     private static final double log2 = Math.log(2.0);
 
     @Override
-    public void voiceNote(int time, int duration, int freq, int attenuation) {
+    public void voiceNote(int time, int duration, int freq, int attenuation) throws InvalidMidiDataException {
         // this is the formula that seems to work best for AGI games...
         // but the actual frequencies put out by the PCJr/Tandy do not match
         // 12ET 440Hz tuning.  This is just an approximation.
@@ -105,14 +80,9 @@ class MidiBuilder implements SoundResource.Builder, Closeable {
         time *= 2;
         duration *= 2;
 
-        try {
             currentTrack.add(new MidiEvent(new ShortMessage(ShortMessage.NOTE_ON, channel, noteNum, velocity), time));
             currentTrack.add(new MidiEvent(new ShortMessage(ShortMessage.NOTE_ON, channel, noteNum, 0), time + duration));
-        } catch (InvalidMidiDataException imde) {
-            if (error == null) {
-                error = imde;
-            }
-        }
+
     }
 
     @Override
@@ -126,7 +96,7 @@ class MidiBuilder implements SoundResource.Builder, Closeable {
     }
 
     @Override
-    public void noiseNote(int time, int duration, int freq, int attenuation, SoundResource.NoiseType type) {
+    public void noiseNote(int time, int duration, int freq, int attenuation, SoundBuilder.NoiseType type) {
         /* we ignore noise */
     }
 

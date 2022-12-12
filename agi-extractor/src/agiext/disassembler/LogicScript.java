@@ -1,7 +1,6 @@
 package agiext.disassembler;
 
-import java.util.List;
-import agiext.extractor.ObjectDictionary;
+import org.rwtodd.agires.AgiObject;
 
 /**
  *
@@ -20,9 +19,9 @@ public interface LogicScript {
 
     String getScriptMessage(int num);
 
-    List<String> getWordGroup(int group);
+    Iterable<String> getWordGroup(int group);
 
-    ObjectDictionary.Entry getObject(int num);
+    AgiObject getObject(int num);
 
     default String getFlagDescription(int flag) {
         return (flag < defaultFlags.length) ? defaultFlags[flag] : null;

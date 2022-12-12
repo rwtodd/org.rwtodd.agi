@@ -16,7 +16,7 @@ public class V3ResourceDirectory implements ResourceDirectory {
     private final int picOffs;   // where the pic resources start
     private final int soundOffs; // where the sound resources start
 
-    V3ResourceDirectory(final Path gamePath, final String prefix) throws AGIException {
+    V3ResourceDirectory(final Path gamePath, final String prefix) throws AgiException {
         try {
             dir = Files.readAllBytes(gamePath.resolve(prefix + "DIR"));
             logicOffs = (dir[0] & 0xff) | ((dir[1] & 0xff) << 8);
@@ -24,7 +24,7 @@ public class V3ResourceDirectory implements ResourceDirectory {
             viewOffs = (dir[4] & 0xff) | ((dir[5] & 0xff) << 8);
             soundOffs = (dir[6] & 0xff) | ((dir[7] & 0xff) << 8);
         } catch (Throwable tr) {
-            throw new AGIException("Could not load resource directory!", tr);
+            throw new AgiException("Could not load resource directory!", tr);
         }
     }
 

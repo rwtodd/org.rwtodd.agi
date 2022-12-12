@@ -12,14 +12,14 @@ public class V2ResourceDirectory implements ResourceDirectory {
 
     private final byte[] sounds, views, pics, logics;
 
-    public V2ResourceDirectory(final Path gamePath) throws AGIException {
+    public V2ResourceDirectory(final Path gamePath) throws AgiException {
         try {
             sounds = Files.readAllBytes(gamePath.resolve("SNDDIR"));
             views = Files.readAllBytes(gamePath.resolve("VIEWDIR"));
             pics =  Files.readAllBytes(gamePath.resolve("PICDIR"));
             logics = Files.readAllBytes(gamePath.resolve("LOGDIR"));
         } catch (IOException e) {
-            throw new AGIException("Could not load resource directories!", e);
+            throw new AgiException("Could not load resource directories!", e);
         }
     }
 
