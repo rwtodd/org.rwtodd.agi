@@ -3,16 +3,24 @@ plugins {
    id 'application'
 }
 
+sourceSets {
+  main.java.srcDirs = ['src']
+}
+
 dependencies {
-    // Use JUnit Jupiter API for testing.
-    // testImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.2'
-    implementation 'org.rwtodd.args:org.rwtodd.args:1.0'
+    implementation 'org.rwtodd:org.rwtodd.args:2.0.1'
     implementation project(':agi-resources')
 }
 
 application {
     // Define the main class for the application.
-    mainModule = 'org.rwtodd.agi.extractor'
-    mainClassName = 'org.rwtodd.agi.extractor.Cmd'
+    mainModule = 'agiext'
+    mainClass = 'agiext.extractor.Cmd'
     applicationDefaultJvmArgs = ['-Dswing.metalTheme=steel']
+}
+
+task rcl {
+    doLast {
+        println("java -p '${sourceSets.main.runtimeClasspath.asPath}' -m agiext")
+    }
 }

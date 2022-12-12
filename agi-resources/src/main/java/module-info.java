@@ -1,4 +1,4 @@
-module org.rwtodd.agi.resources {
+module org.rwtodd.agires {
     requires java.desktop;
-    exports org.rwtodd.agi.resources;
+    exports org.rwtodd.agires;
 }
