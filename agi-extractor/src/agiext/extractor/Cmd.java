@@ -13,7 +13,6 @@ import org.rwtodd.args.*;
 import java.util.List;
 import java.util.stream.IntStream;
 import javax.sound.midi.InvalidMidiDataException;
-import agiext.disassembler.LogicResourceScript;
 
 /**
  * Just like an IntListParam, except it also accepts '*' or 'all'
@@ -91,11 +90,7 @@ public class Cmd {
                 if (doWords.getValue()) runWordDescription(resLoader.getDictionary());
                 if (doObjects.getValue())  runObjectsDescription(resLoader.getInitialGameObjects());
                 runPics(resLoader, doPics.getValue(), imgScale.getValue(), picStepsFlag.getValue());
-                runViews(resLoader, doViews.getValue(), imgScale.getValue());
-                if (doLogics.getValue() != null) {
-                    final var disassembler = new LogicResourceScript(metadata.getVersion(), resLoader.getDictionary(), resLoader.getInitialGameObjects());
-                    runLogics(resLoader, disassembler, doLogics.getValue());
-                }
+                runLogics(resLoader, doLogics.getValue());
             }
         } catch (ArgParserException ape) {
             usage(parser, ape.getMessage());
@@ -222,23 +217,15 @@ public class Cmd {
         which.filter(idx -> idx < pc).forEach(idx -> runOnePic(idx, resloader, scaleFactor, showSteps));
     }
     
-    private static void runOneLogic(final int number, final AgiResourceLoader resloader, LogicResourceScript disassembler) {
+    private static void runOneLogic(final int number, final AgiResourceLoader resloader) {
         try {
             System.out.println("Loading LOGIC " + number);
             final var res = resloader.loadLogic(number);
             final var outPath = Paths.get(String.format("logic_%04d.txt", number));
             
             try (final var pw = new PrintWriter(Files.newBufferedWriter(outPath))) {
-                pw.printf("Logic Script %d\n", number);
-                pw.print("MESSAGES: ~~~~~~~~~~\n");
-                for (int msg = 0; msg < res.getMessageCount(); ++msg) {
-                    pw.printf("%d: %s\n", msg, res.getMessage(msg));
-                }
-                pw.print("\nSCRIPT: ~~~~~~~~~~~~~~\n");
-                disassembler.setResource(res);
-                disassembler.getInstructionDecoder()
-                        .decode(disassembler, 0, disassembler.getRawLength())
-                        .printTo(pw, disassembler, 0, "");
+                pw.printf("[ Logic Script %d\n", number);
+                res.disassembleInto(pw);
             }
         } catch (IOException ioe) {
             System.err.println(ioe.getMessage());
@@ -249,10 +236,10 @@ public class Cmd {
         }
     }
     
-    private static void runLogics(final AgiResourceLoader resloader, LogicResourceScript disassembler, IntStream which) {
+    private static void runLogics(final AgiResourceLoader resloader, IntStream which) {
         if(which == null) return;
         final int lc = resloader.getLogicCount();
-        which.filter(idx -> idx < lc).forEach(idx -> runOneLogic(idx, resloader, disassembler));
+        which.filter(idx -> idx < lc).forEach(idx -> runOneLogic(idx, resloader));
     }
     
     private static void runOneView(final int number, final AgiResourceLoader resloader, int scaleFactor) {

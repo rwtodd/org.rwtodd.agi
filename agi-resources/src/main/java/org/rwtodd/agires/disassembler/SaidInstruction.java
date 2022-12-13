@@ -1,4 +1,7 @@
-package agiext.disassembler;
+package org.rwtodd.agires.disassembler;
+
+import org.rwtodd.agires.AgiLogicScript;
+import org.rwtodd.agires.AgiResourceLoader;
 
 import java.io.PrintWriter;
 
@@ -20,7 +23,7 @@ public class SaidInstruction implements Instruction {
     }
 
     @Override
-    public void printTo(PrintWriter pw, LogicScript script, int baseLocation, final String indentation) {
+    public void printTo(PrintWriter pw, AgiLogicScript script, AgiResourceLoader resLoader, int baseLocation, final String indentation) {
         final var extraInfo = new StringBuilder();
         final var extraIndent = indentation.isBlank() ? indentation : (" ".repeat(indentation.length()));
         pw.printf("%04X: %ssaid(", baseLocation, indentation);
@@ -29,10 +32,10 @@ public class SaidInstruction implements Instruction {
             pw.printf("%s%%w%d", (count++ == 0) ? "" : ", ", w);
             extraInfo.append(
                     String.format(
-                            "      %s ;; WORD %%w%d: ",
+                            "      %s [ WORD %%w%d: ",
                             extraIndent,
                             w));
-            for(final String groupMember: script.getWordGroup(w)) {
+            for(final String groupMember: resLoader.getDictionary().idToWords(w)) {
                 extraInfo.append(String.format("<%s>", groupMember));
             }
             extraInfo.append('\n');

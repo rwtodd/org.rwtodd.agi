@@ -1,4 +1,7 @@
-package agiext.disassembler;
+package org.rwtodd.agires.disassembler;
+
+import org.rwtodd.agires.AgiLogicScript;
+import org.rwtodd.agires.AgiResourceLoader;
 
 import java.io.PrintWriter;
 
@@ -49,7 +52,7 @@ public class BasicInstruction implements Instruction {
     }
 
     @Override
-    public void printTo(final PrintWriter pw, final LogicScript script, int baseLocation, final String indentation) {
+    public void printTo(final PrintWriter pw, final AgiLogicScript script, final AgiResourceLoader resLoader, int baseLocation, final String indentation) {
         final var extraInfo = new StringBuilder();
         final var extraIndent = indentation.isBlank() ? indentation : (" ".repeat(indentation.length()));
         pw.printf("%04X: %s%s", baseLocation, indentation, name);
@@ -59,7 +62,7 @@ public class BasicInstruction implements Instruction {
             pw.print('(');
             for (int a = 0; a < getNumArgs(); ++a, ++baseLocation) {
                 final var atype = getArgType(a);
-                final var aval = script.getRawByte(baseLocation);
+                final var aval = script.getBytecodes()[baseLocation]&0xff;
                 if (a != 0) {
                     pw.print(", ");
                 }
@@ -69,39 +72,40 @@ public class BasicInstruction implements Instruction {
                     case ARG_MSG:
                         extraInfo.append(
                                 String.format(
-                                        "      %s ;; MSG %%m%d: %s\n",
+                                        "      %s [ MSG %%m%d: %s\n",
                                         extraIndent,
                                         aval,
-                                        script.getScriptMessage(aval)));
+                                        script.getMessage(aval)));
                         break;
                     case ARG_FLG:
-                        description = script.getFlagDescription(aval);
+                        description = InstructionDecoder.getFlagDescription(aval);
                         if (description != null) {
                             extraInfo.append(
                                     String.format(
-                                            "      %s ;; FLAG %%f%d: %s\n",
+                                            "      %s [ FLAG %%f%d: %s\n",
                                             extraIndent,
                                             aval,
                                             description));
                         }
                         break;
                     case ARG_VAR:
-                        description = script.getVariableDescription(aval);
+                        description = InstructionDecoder.getVariableDescription(aval);
                         if (description != null) {
                             extraInfo.append(
                                     String.format(
-                                            "      %s ;; VAR %%v%d: %s\n",
+                                            "      %s [ VAR %%v%d: %s\n",
                                             extraIndent,
                                             aval,
                                             description));
                         }
                         break;
                     case ARG_INV:
-                        description = script.getObject(aval).name();
+                        final var gobs = resLoader.getInitialGameObjects();
+                        description = (aval < gobs.size()) ? resLoader.getInitialGameObjects().get(aval).name() : null;
                         if (description != null) {
                             extraInfo.append(
                                     String.format(
-                                            "      %s ;; INVENTORY %%i%d: %s\n",
+                                            "      %s [ INVENTORY %%i%d: %s\n",
                                             extraIndent,
                                             aval,
                                             description));

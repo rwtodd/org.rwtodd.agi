@@ -1,4 +1,7 @@
-package agiext.disassembler;
+package org.rwtodd.agires.disassembler;
+
+import org.rwtodd.agires.AgiLogicScript;
+import org.rwtodd.agires.AgiResourceLoader;
 
 import java.io.PrintWriter;
 
@@ -28,19 +31,19 @@ public class IfAndInstruction implements Instruction {
     }
 
     @Override
-    public void printTo(PrintWriter pw, LogicScript script, int baseLocation, String indentation) {
+    public void printTo(PrintWriter pw, AgiLogicScript script, AgiResourceLoader resLoader, int baseLocation, String indentation) {
         pw.printf("%04X: %sIF-AND(\n", baseLocation++, indentation);
         var indentFurther = indentation + "    ";
-        conditions.printTo(pw, script, baseLocation, indentFurther);
+        conditions.printTo(pw, script, resLoader, baseLocation, indentFurther);
         baseLocation += conditions.getLength();
         pw.printf("%04X: %s) {\n", baseLocation, indentation);
         baseLocation += 3;
-        truePath.printTo(pw, script, baseLocation, indentFurther);
+        truePath.printTo(pw, script, resLoader, baseLocation, indentFurther);
         baseLocation += truePath.getLength();
         if(falsePath != null) {
             pw.printf("%04X: %s} else {\n", baseLocation, indentation);
             baseLocation += 3;
-            falsePath.printTo(pw, script, baseLocation, indentFurther);
+            falsePath.printTo(pw, script, resLoader, baseLocation, indentFurther);
             pw.printf("      %s}\n", indentation); // no address at end of ELSE
         } else {
             pw.printf("      %s}\n", indentation); // no address at end of bare THEN

@@ -1,4 +1,4 @@
-package agiext.disassembler;
+package org.rwtodd.agires.disassembler;
 
 import org.rwtodd.agires.AgiException;
 
@@ -264,23 +264,23 @@ public class InstructionDecoder {
     }
 
     /* parse a goto statement 0xFE */
-    protected Instruction decodeGotoStatement(final LogicScript script, int start, int end) throws AgiException {
+    protected Instruction decodeGotoStatement(final byte[] byteCode, int start, int end) throws AgiException {
         try {
             // signed 16 bit le number...
-            int tgt = (short) (script.getRawByte(start) | (script.getRawByte(start + 1) << 8));
+            int tgt = (short) ((byteCode[start]&0xff) | ((byteCode[start + 1]&0xff) << 8));
             return new GotoInstruction(tgt);
         } catch (Exception e) {
             throw new AgiException("Error decoding 0xFE GOTO", e);
         }
     }
 
-    protected Instruction decodeSimpleTest(int byteCode, final LogicScript script, int start, int end) throws AgiException {
-        return switch (byteCode) {
+    protected Instruction decodeSimpleTest(int testCode, final byte[] byteCode, int start, int end) throws AgiException {
+        return switch (testCode) {
             case 14 -> {  /* SAID() test */
-                final int count = script.getRawByte(start++);
+                final int count = byteCode[start++] & 0xff;
                 final var wordGroups = new int[count];
                 for (int i = 0; i < count; ++i) {
-                    wordGroups[i] = script.getRawByte(start) | (script.getRawByte(start + 1) << 8);
+                    wordGroups[i] = (byteCode[start]&0xff) | ((byteCode[start + 1]&0xff) << 8);
                     start += 2;
                 }
                 if (start > end) {
@@ -289,24 +289,24 @@ public class InstructionDecoder {
                 yield new SaidInstruction(wordGroups);
             }
             case 0xfc ->
-                new OrInstruction(decodeTestStream(byteCode, script, start, end));
+                new OrInstruction(decodeTestStream(testCode, byteCode, start, end));
             case 0xfd -> {
-                final var nxtByte = script.getRawByte(start++);
-                yield new NotInstruction(decodeSimpleTest(nxtByte, script, start, end));
+                final var nxtByte = byteCode[start++]&0xff;
+                yield new NotInstruction(decodeSimpleTest(nxtByte, byteCode, start, end));
             }
             default ->
-                lookupTest(byteCode);
+                lookupTest(testCode);
         };
     }
 
-    protected Instruction decodeTestStream(int delim, final LogicScript script, int start, int end) throws AgiException {
+    protected Instruction decodeTestStream(int delim, final byte[] byteCode, int start, int end) throws AgiException {
         final var tests = new CompoundInstruction();
         while (start < end) {
-            final var bc = script.getRawByte(start++);
+            final var bc = byteCode[start++]&0xff;
             if (bc == delim) {
                 break;
             } else {
-                final var decoded = decodeSimpleTest(bc, script, start, end);
+                final var decoded = decodeSimpleTest(bc, byteCode, start, end);
                 tests.add(decoded);
                 start += decoded.getLength() - 1;
             }
@@ -315,10 +315,10 @@ public class InstructionDecoder {
     }
 
     /* parse an IF structure 0xFF */
-    protected Instruction decodeIfStatement(final LogicScript script, int start, int end) throws AgiException {
-        final var tst = decodeTestStream(0xff, script, start, end);
+    protected Instruction decodeIfStatement(final byte[] byteCode, int start, int end) throws AgiException {
+        final var tst = decodeTestStream(0xff, byteCode, start, end);
         start += tst.getLength() + 1;
-        final var thenLen = script.getRawByte(start) | (script.getRawByte(start + 1) << 8);
+        final var thenLen = (byteCode[start]&0xff) | ((byteCode[start + 1]&0xff) << 8);
         var thenEnd = start + thenLen + 2;
         if (thenEnd > end) {
             // OK, we ran out of room for the THEN section of our code... so rather than making
@@ -333,8 +333,8 @@ public class InstructionDecoder {
 
         // now check of the ELSE jump...
         var elseEnd = -1;
-        if ((thenLen > 3) && (script.getRawByte(thenEnd - 3) == 0xfe)) {
-            int elseLen = (short) (script.getRawByte(thenEnd - 2) | (script.getRawByte(thenEnd - 1) << 8));
+        if ((thenLen > 3) && ((byteCode[thenEnd - 3]&0xff) == 0xfe)) {
+            int elseLen = (short) ((byteCode[thenEnd - 2]&0xff) | ((byteCode[thenEnd - 1]&0xff) << 8));
             elseEnd = thenEnd + elseLen;
             if ((elseLen > 0) && (elseEnd <= end)) {
                 thenEnd -= 3;  // take the jump out of the THEN section
@@ -343,30 +343,30 @@ public class InstructionDecoder {
             }
         }
 
-        final var thenIns = decode(script, start, thenEnd);
+        final var thenIns = decode(byteCode, start, thenEnd);
         final var elseIns = (elseEnd > 0)
-                ? decode(script, thenEnd + 3, elseEnd)
+                ? decode(byteCode, thenEnd + 3, elseEnd)
                 : null;
         return new IfAndInstruction(tst, thenIns, elseIns);
     }
 
-    protected Instruction decodeOne(final LogicScript script, int start, int end) throws AgiException {
-        final var bc = script.getRawByte(start);
+    protected Instruction decodeOne(final byte[] byteCode, int start, int end) throws AgiException {
+        final var bc = byteCode[start]&0xff;
         return switch (bc) {
             case 0xFE ->
-                decodeGotoStatement(script, start + 1, end);
+                decodeGotoStatement(byteCode, start + 1, end);
             case 0xFF ->
-                decodeIfStatement(script, start + 1, end);
+                decodeIfStatement(byteCode, start + 1, end);
             default ->
                 lookupAction(bc);
         };
     }
 
-    public Instruction decode(final LogicScript script, int start, int end) throws AgiException {
+    public Instruction decode(final byte[] byteCode, int start, int end) throws AgiException {
         final var disassembled = new CompoundInstruction();
         try {
             while (start < end) {
-                final var ins = decodeOne(script, start, end);
+                final var ins = decodeOne(byteCode, start, end);
                 disassembled.add(ins);
                 start += ins.getLength();
             }
@@ -377,4 +377,65 @@ public class InstructionDecoder {
         }
         return disassembled.compress();
     }
+
+
+    public static String getFlagDescription(int flag) {
+        return (flag < defaultFlags.length) ? defaultFlags[flag] : null;
+    }
+
+    public static String getVariableDescription(int variable) {
+        return (variable < defaultVars.length) ? defaultVars[variable] : null;
+    }
+
+    /** flag descriptions common to most (all?) AGI games */
+    static String[] defaultFlags = new String[]{
+            "EGO base line is on pri-3 pixels (water surface)",
+            "EGO is invisible (completely obscured)",
+            "The player has issued a command line",
+            "EGO base line has touched a pri-2 pixel (signal)",
+            "'said' command has accepted user input",
+            "The new room is executed for the first time",
+            "'restart_game' command has been executed",
+            "when 1, writing to script-buffer is blocked",
+            "when 1, v15 determines joystick sensitivity",
+            "sound on/off",
+            "when 1, built-in debugger is on",
+            "set when logic-0 is run for the first time",
+            "'restore_game' command has been executed",
+            "when 1, allows the 'status' command to select items",
+            "when 1, allows the menu to work",
+            "'print'/'print_at' modearg 0/close-on-<enter> 1/message-stays-up"
+    };
+
+    /** Variable descriptions common to most (all?) AGI games */
+    static String[] defaultVars = new String[]{
+            "Current room number",
+            "Previous room number",
+            "Border touched by EGO 0/none 1/top 2/right 3/bottom 4/left",
+            "Current Score",
+            "Number of object (other than EGO) touching the boarder",
+            "The code of border touched by the object in v4",
+            "Direction of EGO's motion 1/N 3/E 5/S 7/W 0/none",
+            "Maximum score",
+            "Free pages in memory",
+            "if non-zero, number of the word which wasn't found",
+            "Time delay in interpreter cycles in 1/20s",
+            "Clock seconds",
+            "Clock minutes",
+            "Clock hours",
+            "Clock days",
+            "Joystick sensitivity",
+            "ID of the view associated with EGO",
+            "Interpreter error code",
+            "Additional error info",
+            "Key pressed on keyboard",
+            "Computer type. IBM=0",
+            "If f15=0 and v21 != 0, close window in 0.5*v21 secs",
+            "Sound generator type 1/PC 3/Tandy",
+            "Sound volume",
+            "29h",
+            "ID number of item selected using status cmd",
+            "Graphics 0/CGA 2/Hercules 3/EGA"
+    };
+
 }

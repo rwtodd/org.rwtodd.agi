@@ -1,4 +1,7 @@
-package agiext.disassembler;
+package org.rwtodd.agires.disassembler;
+
+import org.rwtodd.agires.AgiLogicScript;
+import org.rwtodd.agires.AgiResourceLoader;
 
 import java.io.PrintWriter;
 
@@ -20,10 +23,10 @@ public class OrInstruction implements Instruction {
     }
 
     @Override
-    public void printTo(PrintWriter pw, LogicScript script, int baseLocation, String indentation) {
+    public void printTo(PrintWriter pw, AgiLogicScript script, AgiResourceLoader resLoader, int baseLocation, String indentation) {
         pw.printf("%04X: %sOR(\n", baseLocation++, indentation);
         var indentFurther = indentation + "    ";
-        tests.printTo(pw, script, baseLocation, indentFurther);
+        tests.printTo(pw, script, resLoader, baseLocation, indentFurther);
         baseLocation += tests.getLength();
         pw.printf("%04X: %s)\n", baseLocation, indentation);
     }

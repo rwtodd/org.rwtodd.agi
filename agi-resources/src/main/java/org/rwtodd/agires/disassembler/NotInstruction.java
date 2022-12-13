@@ -1,4 +1,7 @@
-package agiext.disassembler;
+package org.rwtodd.agires.disassembler;
+
+import org.rwtodd.agires.AgiLogicScript;
+import org.rwtodd.agires.AgiResourceLoader;
 
 import java.io.PrintWriter;
 
@@ -19,7 +22,7 @@ public class NotInstruction implements Instruction {
     }
 
     @Override
-    public void printTo(PrintWriter pw, LogicScript script, int baseLocation, String indentation) {
-        wrapped.printTo(pw, script, baseLocation + 1, indentation + "NOT ");
+    public void printTo(PrintWriter pw, AgiLogicScript script, AgiResourceLoader resLoader, int baseLocation, String indentation) {
+        wrapped.printTo(pw, script, resLoader, baseLocation + 1, indentation + "NOT ");
     }
 }

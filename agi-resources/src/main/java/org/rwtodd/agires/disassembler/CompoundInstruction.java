@@ -1,4 +1,7 @@
-package agiext.disassembler;
+package org.rwtodd.agires.disassembler;
+
+import org.rwtodd.agires.AgiLogicScript;
+import org.rwtodd.agires.AgiResourceLoader;
 
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -17,9 +20,9 @@ public class CompoundInstruction implements Instruction {
     }
 
     @Override
-    public void printTo(PrintWriter pw, LogicScript script, int baseLocation, String indentation) {
+    public void printTo(PrintWriter pw, AgiLogicScript script, AgiResourceLoader resLoader, int baseLocation, String indentation) {
         for(final var i: contents) {
-            i.printTo(pw, script, baseLocation, indentation);
+            i.printTo(pw, script, resLoader, baseLocation, indentation);
             baseLocation += i.getLength();
         }
     }

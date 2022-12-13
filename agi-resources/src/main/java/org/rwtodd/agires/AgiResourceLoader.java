@@ -1,5 +1,6 @@
 package org.rwtodd.agires;
 
+import org.rwtodd.agires.restypes.LogicResource;
 import org.rwtodd.agires.restypes.ObjectsResource;
 import org.rwtodd.agires.restypes.SoundResource;
 import org.rwtodd.agires.restypes.WordsResource;
@@ -113,7 +114,7 @@ public class AgiResourceLoader implements java.io.Closeable {
         return new PicResource(resbytes, rpen, cpen);
     }
 
-    public LogicResource loadLogic(int number) throws AgiException, ResourceNotPresentException {
+    public AgiLogicScript loadLogic(int number) throws AgiException, ResourceNotPresentException {
         final var dirEntry = rdir.findLogic(number);
         if (!dirEntry.isPresent()) {
             throw new ResourceNotPresentException("LOGIC resource " + number + " isn't present!");
@@ -121,7 +122,7 @@ public class AgiResourceLoader implements java.io.Closeable {
         return loadLogic(number, dirEntry);
     }
 
-    protected LogicResource loadLogic(int number, DirEntry de) throws AgiException, ResourceNotPresentException {
+    protected AgiLogicScript loadLogic(int number, DirEntry de) throws AgiException, ResourceNotPresentException {
         final var resbytes = vmgr.getResource(de);
         if (meta.isBeforeV3()) {
             // we have to decode the text section
@@ -129,7 +130,7 @@ public class AgiResourceLoader implements java.io.Closeable {
             final var msgIndexLen = 2 * (resbytes[textArea] & 0xff);
             Util.decodeInPlace(meta.getDecryptionKey(), resbytes, textArea + 3 + msgIndexLen, resbytes.length);
         }
-        return new LogicResource(resbytes);
+        return LogicResource.build(this, resbytes);
     }
 
     public ViewResource loadView(int number) throws AgiException, ResourceNotPresentException {
@@ -148,4 +149,5 @@ public class AgiResourceLoader implements java.io.Closeable {
     public AgiDictionary getDictionary() { return dictionary; }
     public List<AgiObject> getInitialGameObjects() { return initialObjects; }
     public int getMaxAnimatedObjects() { return maxAnimated; }
+    public GameMetaData getMetaData() { return meta; }
 }
