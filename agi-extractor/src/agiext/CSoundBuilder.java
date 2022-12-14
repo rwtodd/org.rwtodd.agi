@@ -1,4 +1,4 @@
-package agiext.extractor;
+package agiext;
 
 import java.io.PrintWriter;
 import java.nio.file.Files;
@@ -22,9 +22,9 @@ abstract class CSoundBuilder {
                   t 0 3600 ;; AGI runs in 1/60th second ticks
                     
                   ; set up the instruments if using a MIDI-converted orchestra
-                  i 1  0  0  1   0 4   ;; 4 Rhodes piano 
-                  i 1  0  0  2   0 4   ;; 4 Rhodes piano 
-                  i 1  0  0  3   0 4   ;; 4 Rhodes piano 
+                  i 1  0  0  1   0 4   ;; 4 Rhodes piano
+                  i 1  0  0  2   0 4   ;; 4 Rhodes piano
+                  i 1  0  0  3   0 4   ;; 4 Rhodes piano
                     
                   ; set up the panning
                   i 2  0  0  1 0.5     ;; middle

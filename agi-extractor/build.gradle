@@ -4,7 +4,8 @@ plugins {
 }
 
 sourceSets {
-  main.java.srcDirs = ['src']
+    main.java.srcDirs = ['src']
+    main.resources.srcDirs = ['jres']
 }
 
 dependencies {
@@ -15,7 +16,7 @@ dependencies {
 application {
     // Define the main class for the application.
     mainModule = 'agiext'
-    mainClass = 'agiext.extractor.Cmd'
+    mainClass = 'agiext.Cmd'
     applicationDefaultJvmArgs = ['-Dswing.metalTheme=steel']
 }
 

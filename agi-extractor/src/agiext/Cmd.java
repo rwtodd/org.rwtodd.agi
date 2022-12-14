@@ -1,4 +1,4 @@
-package agiext.extractor;
+package agiext;
 
 import java.io.IOException;
 import java.io.PrintWriter;

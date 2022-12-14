@@ -3,7 +3,7 @@ plugins {
     id 'java-library'
 }
 
-archivesBaseName = 'org.rwtodd.agi'
+archivesBaseName = 'org.rwtodd.agires'
 
 dependencies {
         testImplementation(platform('org.junit:junit-bom:5.9.1'))

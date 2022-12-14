@@ -1,4 +1,4 @@
-package agiext.extractor;
+package agiext;
 
 import org.rwtodd.agires.AgiPic;
 import org.rwtodd.agires.AgiResourceLoader;
