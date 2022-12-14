@@ -1,9 +1,6 @@
 package org.rwtodd.agires;
 
-import org.rwtodd.agires.restypes.LogicResource;
-import org.rwtodd.agires.restypes.ObjectsResource;
-import org.rwtodd.agires.restypes.SoundResource;
-import org.rwtodd.agires.restypes.WordsResource;
+import org.rwtodd.agires.restypes.*;
 import org.rwtodd.agires.util.Util;
 
 import java.io.IOException;
@@ -133,7 +130,7 @@ public class AgiResourceLoader implements java.io.Closeable {
         return LogicResource.build(this, resbytes);
     }
 
-    public ViewResource loadView(int number) throws AgiException, ResourceNotPresentException {
+    public AgiView loadView(int number) throws AgiException, ResourceNotPresentException {
         final var dirEntry = rdir.findView(number);
         if (!dirEntry.isPresent()) {
             throw new ResourceNotPresentException("VIEW resource " + number + " isn't present!");
@@ -141,13 +138,19 @@ public class AgiResourceLoader implements java.io.Closeable {
         return loadView(number, dirEntry);
     }
 
-    protected ViewResource loadView(int number, DirEntry de) throws AgiException, ResourceNotPresentException {
+    protected AgiView loadView(int number, DirEntry de) throws AgiException, ResourceNotPresentException {
         final var resbytes = vmgr.getResource(de);
-        return new ViewResource(number, resbytes);
+        return ViewResource.build(resbytes);
     }
 
     public AgiDictionary getDictionary() { return dictionary; }
     public List<AgiObject> getInitialGameObjects() { return initialObjects; }
     public int getMaxAnimatedObjects() { return maxAnimated; }
     public GameMetaData getMetaData() { return meta; }
+
+    public int[] getPalette() {
+        // assume standard EGA palette for now. Might expand to the strange palettes of
+        // non-PC versions of the games in the future.
+        return Util.egaPalette;
+    }
 }

@@ -58,13 +58,13 @@ public class Cmd {
         final var doObjects = new FlagParam(List.of("objects"), "Write out the OBJECTS resources");
         final var doPics = new IntListOrAll(List.of("pics"), "<Resource List>Write GIFs of the PIC resources");
         final var imgScale = new IntParam(List.of("scale"), 3, "<Factor>How much to scale images up (default 3)");
- //       final var noAspectRatio = new FlagParam(List.of("noAR"), "Don't correct the aspect ratio for modern square pixels");
+        final var noAspectRatio = new FlagParam(List.of("noAR"), "Don't correct the aspect ratio for modern square pixels");
         final var picStepsFlag = new FlagParam(List.of("picsteps"), "Write intermediate PIC images as PICs are drawn");
         final var doLogics = new IntListOrAll(List.of("logics"), "<Resource List>Write disassembled LOGIC script resources");
         final var doViews = new IntListOrAll(List.of("views"), "<Resource List>Write GIFs of the VIEW resources");
         final var help = new FlagParam(List.of("help"), "Print this help text.");
         final var parser = new Parser(gameDir, doCSound, doMidi, doWords, doObjects, doPics,
-                imgScale,/* noAspectRatio, */ picStepsFlag, doLogics, doViews, help);
+                imgScale, noAspectRatio, picStepsFlag, doLogics, doViews, help);
 
         try {
             final var extras = parser.parse(args);
@@ -90,6 +90,7 @@ public class Cmd {
                 if (doWords.getValue()) runWordDescription(resLoader.getDictionary());
                 if (doObjects.getValue())  runObjectsDescription(resLoader.getInitialGameObjects());
                 runPics(resLoader, doPics.getValue(), imgScale.getValue(), picStepsFlag.getValue());
+                runViews(resLoader, doViews.getValue(), imgScale.getValue(), !noAspectRatio.getValue());
                 runLogics(resLoader, doLogics.getValue());
             }
         } catch (ArgParserException ape) {
@@ -242,21 +243,17 @@ public class Cmd {
         which.filter(idx -> idx < lc).forEach(idx -> runOneLogic(idx, resloader));
     }
     
-    private static void runOneView(final int number, final AgiResourceLoader resloader, int scaleFactor) {
+    private static void runOneView(final int number, final AgiResourceLoader resLoader, int scaleFactor, boolean correctAR) {
         try {
             System.out.println("Loading VIEW " + number);
-            final var res = resloader.loadView(number);
-            final var builder = new BufferedImageViewBuilder();
-            res.build(builder);
-            if (builder.getDescription().isPresent()) {
-                Files.writeString(Paths.get(String.format("view_%03d_desc.txt", number)), builder.getDescription().get());
+            final var view = resLoader.loadView(number);
+
+            if (view.description().isPresent()) {
+                Files.writeString(Paths.get(String.format("view_%03d_desc.txt", number)), view.description().get());
             }
-            for (int loop = 0; loop < builder.getLoopCount(); ++loop) {
-                for (int cell = 0; cell < builder.getCellCount(loop); ++cell) {
-                    final var outpath = Paths.get(String.format("view_%03d_loop_%03d_cell_%03d.gif", number, loop, cell));
-                    builder.writeToDisk(outpath, loop, cell, scaleFactor);
-                }
-            }
+
+            final var img = PngImage.scaleUp(PngImage.imageFromView(resLoader, view), scaleFactor, correctAR);
+            PngImage.writeImage(Paths.get(String.format("view_%03d.png", number)), img);
         } catch (IOException ioe) {
             System.err.println("VIEW " + number + " error writing IO. " + ioe);
         } catch (ResourceNotPresentException rnp) {
@@ -266,9 +263,9 @@ public class Cmd {
         }
     }
     
-    private static void runViews(final AgiResourceLoader resloader, IntStream which, int scaleFactor) {
+    private static void runViews(final AgiResourceLoader resloader, IntStream which, int scaleFactor, boolean correctAR) {
         if(which == null) return;
         final int vc = resloader.getViewCount();
-        which.filter(idx -> idx < vc).forEach(idx -> runOneView(idx, resloader, scaleFactor));
+        which.filter(idx -> idx < vc).forEach(idx -> runOneView(idx, resloader, scaleFactor, correctAR));
     }
 }

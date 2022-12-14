@@ -9,7 +9,9 @@ import org.rwtodd.agires.AgiException;
  */
 public class Util {
 
-    // "Avis Durgan"
+    /** "Avis Durgan"
+     *
+     */
     public static final byte[] AVIS
             = {65, 118, 105, 115, 32, 68, 117, 114, 103, 97, 110};
 
@@ -184,4 +186,26 @@ public class Util {
         }
         return output;
     }
+
+    /**
+     * ARGB ints for the standard EGA palette
+     */
+    public static int[] egaPalette = new int[] {
+            0xff_00_00_00,
+            0xff_00_00_aa,
+            0xff_00_aa_00,
+            0xff_00_aa_aa,
+            0xff_aa_00_00,
+            0xff_aa_00_aa,
+            0xff_aa_55_00,
+            0xff_aa_aa_aa,
+            0xff_55_55_55,
+            0xff_55_55_ff,
+            0xff_55_ff_55,
+            0xff_55_ff_ff,
+            0xff_ff_55_55,
+            0xff_ff_55_ff,
+            0xff_ff_ff_55,
+            0xff_ff_ff_ff
+    };
 }
