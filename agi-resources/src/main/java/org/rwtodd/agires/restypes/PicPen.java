@@ -1,11 +1,13 @@
-package org.rwtodd.agires;
+package org.rwtodd.agires.restypes;
+
+import org.rwtodd.agires.AgiPic;
+import org.rwtodd.agires.GameMetaData;
 
 /**
  * The base class for all the various types of PIC resource pens.
- * @author rwtodd
+ * @author Richard Todd
  */
 sealed abstract class PicPen permits RectanglePen, CirclePen {
-
     /* the size class of the pen (0 to 7), as given in a PIC resource. */
     protected int size = 0;
 
@@ -76,35 +78,31 @@ sealed abstract class PicPen permits RectanglePen, CirclePen {
     /**
      * Draw the pen to the handler centered at x,y.
      *
-     * @param b the handler
+     * @param p the plotter
      * @param x x position of the pen
      * @param y y position of the pen
-     * @param picColor the picture color to use for the pen
-     * @param priColor the priority color to use for the pen
      * @param pattern the pattern of pixels to use with the pen
      */
-    public void drawAt(final PicResource.Builder b,
+    public void drawAt(final PicResource.Plotter p,
             int x, int y,
-            int picColor, int priColor,
             final PenPattern pattern) {
-        // step 1, set the top, left so that the plot fits on screen.  This is what
-        // scummvm does.
         final int numRows = getHeight();
         final int numColumns = getWidth();
 
+        // step 1, set the top, left so that the plot fits on screen.
         int left = x - horizontalOffset();
         if (left < 0) {
             left = 0;
-        } else if ((left + numColumns) >= PicResource.PIC_DIMENSIONS.width) {
-            left = PicResource.PIC_DIMENSIONS.width - numColumns;
+        } else if ((left + numColumns) >= AgiPic.AGI_PIC_WIDTH) {
+            left = AgiPic.AGI_PIC_WIDTH - numColumns;
         }
 
         int top = y - verticalOffset();
         if (top < 0) {
             top = 0;
         }
-        if ((top + numRows) >= PicResource.PIC_DIMENSIONS.height) {
-            top = PicResource.PIC_DIMENSIONS.height - numRows;
+        if ((top + numRows) >= AgiPic.AGI_PIC_HEIGHT) {
+            top = AgiPic.AGI_PIC_HEIGHT - numRows;
         }
 
         // step 2, go through the shape, drawing it.
@@ -113,7 +111,7 @@ sealed abstract class PicPen permits RectanglePen, CirclePen {
             final int skipped = pixelsToSkip(row), count = skipped + pixelsToPlot(row);
             for (int column = skipped; column < count; ++column) {
                 if (iterator.hasNext() && iterator.next()) {
-                    b.plotPoint(left + column, top + row, picColor, priColor);
+                    p.plotPoint(left + column, top + row);
                 }
             }
         }

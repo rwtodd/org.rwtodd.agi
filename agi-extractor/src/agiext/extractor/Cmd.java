@@ -89,7 +89,7 @@ public class Cmd {
                 runMidiExtractor(resLoader, doMidi.getValue());
                 if (doWords.getValue()) runWordDescription(resLoader.getDictionary());
                 if (doObjects.getValue())  runObjectsDescription(resLoader.getInitialGameObjects());
-                runPics(resLoader, doPics.getValue(), imgScale.getValue(), picStepsFlag.getValue());
+                runPics(resLoader, doPics.getValue(), imgScale.getValue(), !noAspectRatio.getValue(), picStepsFlag.getValue());
                 runViews(resLoader, doViews.getValue(), imgScale.getValue(), !noAspectRatio.getValue());
                 runLogics(resLoader, doLogics.getValue());
             }
@@ -107,15 +107,15 @@ public class Cmd {
     private static void runOneCSound(final int num, final AgiResourceLoader resLoader) {
         try {
             System.out.println("[CSOUND] Loading sound " + num);
-            try (final var handler = new CSoundBuilder(Paths.get(String.format("sound_%03d.sco", num)))) {
-                resLoader.loadSound(num, handler);
-            }
+            CSoundBuilder.writeScore(Paths.get(String.format("sound_%03d.sco", num)), num,resLoader.loadSound(num));
         } catch (IOException ioe) {
-            System.err.println("IO Error during sound " + num + " " + ioe);
+            System.err.println("IO Error during sound " + num + " " + ioe.getMessage());
         } catch (ResourceNotPresentException rnp) {
             System.out.println("Sound " + num + " isn't in the resources.");
         } catch (AgiException ae) {
             describeException("Sound " + num + " ERROR:", ae);
+        } catch(Exception e) {
+            System.err.println("Error during sound " + num + " " + e.getMessage());
         }
     }
     
@@ -129,17 +129,17 @@ public class Cmd {
     private static void runOneMidi(final int num, final AgiResourceLoader resLoader) {
         try {
             System.out.println("[MIDI] Loading sound " + num);
-            try (final var builder = new MidiBuilder(Paths.get(String.format("sound_%03d.mid", num)))) {
-                resLoader.loadSound(num, builder);
-            }
+            MidiBuilder.writeMidiFile(Paths.get(String.format("sound_%03d.mid",num)), num, resLoader.loadSound(num));
         } catch (InvalidMidiDataException imde) {
-            System.err.println("MIDI Error during sound " + num + " " + imde);
+            System.err.println("MIDI Error during sound " + num + " " + imde.getMessage());
         } catch (IOException ioe) {
-            System.err.println("IO Error during sound " + num + " " + ioe);
+            System.err.println("IO Error during sound " + num + " " + ioe.getMessage());
         } catch (ResourceNotPresentException rnp) {
             System.out.println("Sound " + num + " isn't in the resources.");
         } catch (AgiException ae) {
             describeException("Sound " + num + " ERROR:", ae);
+        } catch(Exception e) {
+            System.err.println("Error during sound " + num + " " + e.getMessage());
         }
     }
     
@@ -195,16 +195,17 @@ public class Cmd {
         }
     }
     
-    private static void runOnePic(final int number, final AgiResourceLoader resloader, int scaleFactor, boolean showSteps) {
+    private static void runOnePic(final int number, final AgiResourceLoader resLoader, int scaleFactor, boolean correctAR, boolean showSteps) {
         try {
             System.out.println("Loading PIC " + number);
-            final var res = resloader.loadPic(number);
-            final var handler = (showSteps)
-                    ? new LoggingImageBuilder(number)
-                    : new BufferedImagePicBuilder();
-            res.build(handler);
-            handler.writeImageToGIF(Paths.get(String.format("pic_%03d.gif", number)), scaleFactor);
-            handler.writePriorityToGIF(Paths.get(String.format("prio_%03d.gif", number)), scaleFactor);
+            final String baseName = String.format("pic_%03d", number);
+            final AgiPic pic = resLoader.loadPic(number); // TODO handle showsteps
+            var scaled = PngImage.scaleUp(PngImage.imageFromPic(resLoader, pic.picture()),scaleFactor,correctAR);
+            PngImage.writeImage(Paths.get(baseName+".png"), scaled);
+            scaled = PngImage.scaleUp(PngImage.imageFromPic(resLoader, pic.priority()), scaleFactor, correctAR);
+            PngImage.writeImage(Paths.get(baseName + "_pri.png"), scaled);
+        } catch (IOException ioe) {
+            System.err.println("VIEW " + number + " error writing IO. " + ioe.getMessage());
         } catch (ResourceNotPresentException rnp) {
             System.out.println("PIC " + number + " isn't in the resources.");
         } catch (AgiException ae) {
@@ -212,10 +213,10 @@ public class Cmd {
         }
     }
     
-    private static void runPics(final AgiResourceLoader resloader, IntStream which, int scaleFactor, boolean showSteps) {
+    private static void runPics(final AgiResourceLoader resloader, IntStream which, int scaleFactor, boolean correctAR, boolean showSteps) {
         if(which == null) return;
         final int pc = resloader.getPicCount();
-        which.filter(idx -> idx < pc).forEach(idx -> runOnePic(idx, resloader, scaleFactor, showSteps));
+        which.filter(idx -> idx < pc).forEach(idx -> runOnePic(idx, resloader, scaleFactor, correctAR, showSteps));
     }
     
     private static void runOneLogic(final int number, final AgiResourceLoader resloader) {
@@ -255,7 +256,7 @@ public class Cmd {
             final var img = PngImage.scaleUp(PngImage.imageFromView(resLoader, view), scaleFactor, correctAR);
             PngImage.writeImage(Paths.get(String.format("view_%03d.png", number)), img);
         } catch (IOException ioe) {
-            System.err.println("VIEW " + number + " error writing IO. " + ioe);
+            System.err.println("VIEW " + number + " error writing IO. " + ioe.getMessage());
         } catch (ResourceNotPresentException rnp) {
             System.out.println("PIC " + number + " isn't in the resources.");
         } catch (AgiException ae) {

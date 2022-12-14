@@ -1,37 +1,27 @@
 package agiext.extractor;
 
-import java.io.Closeable;
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import org.rwtodd.agires.Builders.SoundBuilder;
+import org.rwtodd.agires.AgiSound;
 
 /**
  * A handler for sound resources which output CSound scores.
  *
- * @author rwtodd
+ * @author Richard Todd
  */
-class CSoundBuilder implements SoundBuilder, Closeable {
+abstract class CSoundBuilder {
 
-    private final PrintWriter out;
-    private int curVoice;
-
-    CSoundBuilder(Path outfile) throws IOException {
-        out = new PrintWriter(
-                Files.newBufferedWriter(outfile, java.nio.charset.StandardCharsets.UTF_8));
-        curVoice = -1;
-    }
-
-    @Override
-    public void soundStart(int num, String desc) {
-        out.printf(";; AGI Sound Resource %d (%s)\n\n", num, desc);
-        out.print("""
+    static void writeScore(Path outfile, int soundNumber, AgiSound sound) throws Exception {
+            try(final var out = new PrintWriter(
+                    Files.newBufferedWriter(outfile, java.nio.charset.StandardCharsets.UTF_8))) {
+                out.printf(";; AGI Sound Resource %d\n\n", soundNumber);
+                out.print("""
                     
                   t 0 3600 ;; AGI runs in 1/60th second ticks
                     
-                  ; set up the instruments
+                  ; set up the instruments if using a MIDI-converted orchestra
                   i 1  0  0  1   0 4   ;; 4 Rhodes piano 
                   i 1  0  0  2   0 4   ;; 4 Rhodes piano 
                   i 1  0  0  3   0 4   ;; 4 Rhodes piano 
@@ -43,68 +33,48 @@ class CSoundBuilder implements SoundBuilder, Closeable {
                   
                   
                   """);
-    }
+                int curVoice = 10;
+                if(sound.voices().isEmpty()) out.printf(";; No tonal voices for this sound.  noise-only!");
+                for(final var voice: sound.voices()) {
+                    ++curVoice;
+                    out.printf(";; Start of voice %d (instrument %d)\n", curVoice - 10, curVoice);
+                    out.print(";;\tstart\tdur\tlevel\tfreq\n");
 
-    @Override
-    public void voiceStart(int num) {
-        curVoice = 10 + num;
-        out.printf(";; Start of voice %d (instrument %d)\n", num, curVoice);
-        out.print(";;\tstart\tdur\tlevel\tfreq\n");
-    }
+                    for(final var note: voice.notes()) {
+                        out.printf("i%d\t%d\t%d\t%d\t%d\n",
+                                curVoice,
+                                note.startTime(),
+                                note.duration(),
+                                note.attenuation(),
+                                note.frequency());
+                    }
 
-    @Override
-    public void voiceNote(int time, int duration, int freq, int attenuation) {
-        out.printf("i%d\t%d\t%d\t%d\t%d\n",
-                curVoice,
-                time,
-                duration,
-                attenuation,
-                freq);
-    }
+                    out.printf(";; End of instrument %d\n\n", curVoice);
+                }
+                if(sound.noise().isPresent()) {
+                    out.print(";; Start of noise channel (instrument 21 an 31)\n");
+                    out.print(";;\tstart\tdur\tlevel\tfreq\n");
 
-    @Override
-    public void voiceEnd() {
-        out.printf(";; End of instrument %d\n\n", curVoice);
-        curVoice = -1;
-    }
+                    for(final var noise: sound.noise().get().noises()) {
+                        final int inst = switch (noise.type()) {
+                            case WHITE -> 21;
+                            case LINEAR -> 31;
+                        };
+                        out.printf("i%d\t%d\t%d\t%d\t%d\n",
+                                inst,
+                                noise.startTime(),
+                                noise.duration(),
+                                noise.attenuation(),
+                                noise.frequency());
+                    }
+                    out.print(";; End of noise channel\n\n");
+                } else {
+                    out.print(";; No noise channel in this sound.\n\n");
+                }
 
-    @Override
-    public void noiseStart() {
-        out.print(";; Start of noise channel (instrument 21 an 31)\n");
-        out.print(";;\tstart\tdur\tlevel\tfreq\n");
-    }
-
-    @Override
-    public void noiseNote(int time, int duration, int freq, int attenuation, SoundBuilder.NoiseType type) {
-        final int inst = switch (type) {
-            case WHITE ->
-                21;
-            case LINEAR ->
-                31;
-        };
-        out.printf("i%d\t%d\t%d\t%d\t%d\n",
-                inst,
-                time,
-                duration,
-                attenuation,
-                freq);
-
-    }
-
-    @Override
-    public void noiseEnd() {
-        out.print(";; End of noise channel\n\n");
-    }
-
-    @Override
-    public void soundEnd(int totalDuration) {
-        out.print(";; mixer\n;;\tstart\tdur\trev\tlvl1\tlvl2\n");
-        out.printf("i99\t0\t%d\t0.9\t1.0\t1.0\n",totalDuration+60);
-    }
-
-    @Override
-    public void close() throws IOException {
-        out.close();
+                out.print(";; mixer\n;;\tstart\tdur\trev\tlvl1\tlvl2\n");
+                out.printf("i99\t0\t%d\t0.9\t1.0\t1.0\n", sound.getLength()+60);
+            }
     }
 
 }

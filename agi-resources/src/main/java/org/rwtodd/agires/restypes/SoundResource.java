@@ -1,7 +1,10 @@
 package org.rwtodd.agires.restypes;
 
 import org.rwtodd.agires.AgiException;
-import org.rwtodd.agires.Builders.SoundBuilder;
+import org.rwtodd.agires.AgiSound;
+
+import java.util.ArrayList;
+import java.util.Optional;
 
 /**
  * Represents a 4-voice AGI sound resource. It does minimal interpretation and
@@ -10,35 +13,24 @@ import org.rwtodd.agires.Builders.SoundBuilder;
  *
  * @author Richard Todd
  */
-public class SoundResource {
+public abstract class SoundResource {
 
-    private final byte[] data;
-    private final int resNumber;
-    private final String description;
 
-    public SoundResource(final int number, final String desc, final byte[] src) {
-        resNumber = number;
-        description = (desc == null) ? "AGI Sound Resource" : desc;
-        data = src;
-    }
-
-    public void build(final SoundBuilder b) throws AgiException {
-        int totalLength = 0;
+    public static AgiSound build(final byte[] data) throws AgiException {
         try {
-            b.soundStart(resNumber, description);
-
-            totalLength = Math.max(totalLength, streamVoice(1, b));
-            totalLength = Math.max(totalLength, streamVoice(2, b));
-            totalLength = Math.max(totalLength, streamVoice(3, b));
-            totalLength = Math.max(totalLength, streamNoise(b));
-
-            b.soundEnd(totalLength);
+            final var voices = new ArrayList<AgiSound.ToneChannel>();
+            for(int which = 1; which <= 3; ++which) {
+                final AgiSound.ToneChannel ch = streamVoice(data, which);
+                if (ch != null) voices.add(ch);
+            }
+            final AgiSound.NoiseChannel nc = streamNoise(data);
+            return new AgiSound(voices, Optional.ofNullable(nc));
         } catch (Exception e) {
             throw new AgiException("Error while parsing a sound resource", e);
         }
     }
 
-    private void checkVoiceLength(int offset, int len) throws AgiException {
+    private static void checkVoiceLength(final byte[] data, int offset, int len) throws AgiException {
         final int remainder = len % 5;
         if ((remainder == 0)
                 || ((remainder == 2) && (data[offset + len - 1] == -1) && (data[offset + len - 2] == -1))) {
@@ -47,15 +39,14 @@ public class SoundResource {
         throw new AgiException("Sound has irregular voice of length " + len);
     }
 
-    private int streamVoice(final int num, final SoundBuilder b) throws Exception {
+    private static AgiSound.ToneChannel streamVoice(final byte[] data, final int num) throws Exception {
         int curTime = 0;
-        int audibleLength = 0;
 
+        ArrayList<AgiSound.Note> noteList = null;
         final int base = (num - 1) * 2;
         int idx = (data[base] & 0xff) | ((data[base + 1] & 0xff) << 8);
         final int end = (data[base + 2] & 0xff) | ((data[base + 3] & 0xff) << 8);
-        checkVoiceLength(idx, end - idx);
-        b.voiceStart(num);
+        checkVoiceLength(data, idx, end - idx);
 
         while ((idx + 4) < end) {
             final int startTime = curTime;
@@ -65,29 +56,26 @@ public class SoundResource {
             if (attenuation < 15) {
                 // audible
                 final int freq = ((data[idx + 2] & 0x3f) << 4) | (data[idx + 3] & 0x0f);
-                b.voiceNote(startTime, duration, freq, attenuation);
-                audibleLength = curTime;
+                if(noteList == null) noteList = new ArrayList<>();
+                noteList.add(new AgiSound.Note(startTime, duration, freq, attenuation));
             }
             idx += 5;
         }
-
-        b.voiceEnd();
-        return audibleLength;
+        return (noteList != null) ? new AgiSound.ToneChannel(noteList) : null;
     }
 
-    private int streamNoise(final SoundBuilder b) throws Exception {
+    private static AgiSound.NoiseChannel streamNoise(final byte[] data) throws Exception {
         int curTime = 0;
-        int audibleLength = 0;
 
         int idx = (data[6] & 0xff) | ((data[7] & 0xff) << 8);
         final int end = data.length;
-        checkVoiceLength(idx, end - idx);
-        b.noiseStart();
+        checkVoiceLength(data, idx, end - idx);
+        ArrayList<AgiSound.Noise> noiseList = null;
 
         while ((idx + 4) < end) {
             final var nt = ((data[idx + 3] & 0x04) == 0)
-                    ? SoundBuilder.NoiseType.LINEAR
-                    : SoundBuilder.NoiseType.WHITE;
+                    ? AgiSound.NoiseType.LINEAR
+                    : AgiSound.NoiseType.WHITE;
             final int startTime = curTime;
             final int attenuation = data[idx + 4] & 0x0f;
             final int duration = (data[idx] & 0xff) | ((data[idx + 1] & 0xff) << 8);
@@ -95,22 +83,17 @@ public class SoundResource {
             if (attenuation < 15) {
                 // audible
                 final int freq = switch (data[idx + 3] & 0x03) {
-                    case 0 ->
-                        0x10;
-                    case 1 ->
-                        0x20;
-                    case 2 ->
-                        0x40;
-                    default ->
-                        0x00;
+                    case 0 ->  0x10;
+                    case 1 ->  0x20;
+                    case 2 ->  0x40;
+                    default -> 0x00;
                 };
-                b.noiseNote(startTime, duration, freq, attenuation, nt);
-                audibleLength = curTime;
+                if(noiseList == null) noiseList = new ArrayList<>();
+                noiseList.add(new AgiSound.Noise(startTime, duration, freq, attenuation, nt));
             }
             idx += 5;
         }
 
-        b.noiseEnd();
-        return audibleLength;
+        return (noiseList != null) ? new AgiSound.NoiseChannel(noiseList) : null;
     }
 }

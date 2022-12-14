@@ -3,7 +3,7 @@ package org.rwtodd.agires;
 /**
  * A DirEntry is a description of where a resource lives in the resource files.
  *
- * @author rwtodd
+ * @author Richard Todd
  */
 public class DirEntry {
 

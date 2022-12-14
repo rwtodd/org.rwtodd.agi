@@ -76,19 +76,18 @@ public class AgiResourceLoader implements java.io.Closeable {
         return rdir.getLogicCount();
     }
 
-    public void loadSound(int number, Builders.SoundBuilder bldr) throws AgiException, ResourceNotPresentException {
+    public AgiSound loadSound(int number) throws AgiException, ResourceNotPresentException {
         final var dirEntry = rdir.findSound(number);
         if (!dirEntry.isPresent()) {
             throw new ResourceNotPresentException("Sound resource " + number + " isn't present!");
         }
-        loadSound(number, dirEntry, bldr);
+        return loadSound(number, dirEntry);
     }
 
-    protected void loadSound(int number, DirEntry de, Builders.SoundBuilder bldr) throws AgiException, ResourceNotPresentException {
+    protected AgiSound loadSound(int number, DirEntry de) throws AgiException, ResourceNotPresentException {
         try {
             final var resbytes = vmgr.getResource(de);
-            final var sr = new SoundResource(number, de.toString(), resbytes);
-            sr.build(bldr);
+            return SoundResource.build(resbytes);
         } catch(AgiException agie) {
             throw agie;
         } catch (Exception e) {
@@ -96,7 +95,7 @@ public class AgiResourceLoader implements java.io.Closeable {
         }
     }
 
-    public PicResource loadPic(int number) throws AgiException, ResourceNotPresentException {
+    public AgiPic loadPic(int number) throws AgiException, ResourceNotPresentException {
         final var dirEntry = rdir.findPic(number);
         if (!dirEntry.isPresent()) {
             throw new ResourceNotPresentException("PIC resource " + number + " isn't present!");
@@ -104,11 +103,9 @@ public class AgiResourceLoader implements java.io.Closeable {
         return loadPic(number, dirEntry);
     }
 
-    protected PicResource loadPic(int number, DirEntry de) throws AgiException, ResourceNotPresentException {
+    protected AgiPic loadPic(int number, DirEntry de) throws AgiException, ResourceNotPresentException {
         final var resbytes = vmgr.getResource(de);
-        final var rpen = new RectanglePen();
-        final var cpen = meta.isV3() ? new V3CirclePen() : new CirclePen();
-        return new PicResource(resbytes, rpen, cpen);
+        return new PicResource(meta).build(resbytes);
     }
 
     public AgiLogicScript loadLogic(int number) throws AgiException, ResourceNotPresentException {

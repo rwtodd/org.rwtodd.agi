@@ -1,5 +1,6 @@
 package agiext.extractor;
 
+import org.rwtodd.agires.AgiPic;
 import org.rwtodd.agires.AgiResourceLoader;
 import org.rwtodd.agires.AgiView;
 
@@ -7,11 +8,23 @@ import java.awt.*;
 import java.awt.geom.AffineTransform;
 import java.awt.image.AffineTransformOp;
 import java.awt.image.BufferedImage;
-import java.awt.image.IndexColorModel;
 import java.io.IOException;
 import java.nio.file.Path;
 
 public abstract class PngImage {
+
+    public static BufferedImage imageFromPic(AgiResourceLoader resLoader, AgiPic.Image pic) {
+        final var bi = new BufferedImage(pic.getWidth(), pic.getHeight(), BufferedImage.TYPE_INT_ARGB_PRE);
+        final int[] palette = resLoader.getPalette();
+        int picIdx = 0;
+        final byte[] pixels = pic.pixels();
+        for(int y = 0; y < pic.getHeight(); ++y) {
+            for(int x = 0; x < pic.getWidth(); ++x) {
+                bi.setRGB(x,y,palette[pixels[picIdx++]]);
+            }
+        }
+        return bi;
+    }
 
     public static BufferedImage imageFromView(AgiResourceLoader resLoader, AgiView view) {
         // get the size of an image that puts all loops in a vertical list, with all

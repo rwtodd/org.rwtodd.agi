@@ -1,4 +1,4 @@
-package org.rwtodd.agires;
+package org.rwtodd.agires.restypes;
 
 import java.util.Iterator;
 

@@ -1,66 +1,135 @@
-package org.rwtodd.agires;
+package org.rwtodd.agires.restypes;
+
+import org.rwtodd.agires.AgiException;
+import org.rwtodd.agires.AgiPic;
+import org.rwtodd.agires.GameMetaData;
+
+import java.util.ArrayDeque;
+import java.util.Arrays;
 
 /**
  * Represents the AGI Picture (background). It does minimal interpretation and
  * validation of the resource, and works with a client-provided Handler to build
  * the representation of the picture needed by the client.
  *
- * @author rwtodd
+ * @author Richard TOdd
  */
 public class PicResource {
 
-    /**
-     * the AGI palette in RGBA order, 8-bit components.
-     */
-    public static byte[] agiPalette = new byte[]{
-        (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0xff,
-        (byte) 0x00, (byte) 0x00, (byte) 0xaa, (byte) 0xff,
-        (byte) 0x00, (byte) 0xaa, (byte) 0x00, (byte) 0xff,
-        (byte) 0x00, (byte) 0xaa, (byte) 0xaa, (byte) 0xff,
-        (byte) 0xaa, (byte) 0x00, (byte) 0x00, (byte) 0xff,
-        (byte) 0xaa, (byte) 0x00, (byte) 0xaa, (byte) 0xff,
-        (byte) 0xaa, (byte) 0x55, (byte) 0x00, (byte) 0xff,
-        (byte) 0xaa, (byte) 0xaa, (byte) 0xaa, (byte) 0xff,
-        (byte) 0x55, (byte) 0x55, (byte) 0x55, (byte) 0xff,
-        (byte) 0x55, (byte) 0x55, (byte) 0xff, (byte) 0xff,
-        (byte) 0x55, (byte) 0xff, (byte) 0x55, (byte) 0xff,
-        (byte) 0x55, (byte) 0xff, (byte) 0xff, (byte) 0xff,
-        (byte) 0xff, (byte) 0x55, (byte) 0x55, (byte) 0xff,
-        (byte) 0xff, (byte) 0x55, (byte) 0xff, (byte) 0xff,
-        (byte) 0xff, (byte) 0xff, (byte) 0x55, (byte) 0xff,
-        (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff
-    };
+    class Plotter {
+        void clear() {
+            // AGI images always clear to white, with priority 4 everywhere
+            Arrays.fill(picture.pixels(),(byte)15);
+            Arrays.fill(priority.pixels(),(byte)4);
+        }
 
-    static final java.awt.Dimension PIC_DIMENSIONS = new java.awt.Dimension(160, 168);
-
-    public static interface Builder {
-
-        void startPicture(int sizeX, int sizeY, int picColor, int priColor);
-
-        //0xF0: Change Picture color and enable Picture draw.
-        //0xF1: Disable Picture draw.
-        //0xF2: Change priority color and enable priority draw.
-        //0xF3: Disable priority draw.
         //0xF4: Draw a Y corner.
         //0xF5: Draw an X corner.
         //0xF7: Relative line (short lines).
         //0xF6: Absolute line (long lines).
-        void line(int x1, int y1, int x2, int y2, int picColor, int priColor);
+        void line(int x1, int y1, int x2, int y2) {
+            int height = y2 - y1, width = x2 - x1;
+            int addY = 1, addX = 1;
+            if (height < 0) {
+                addY = -1;
+                height = -height;
+            }
+            if (width < 0) {
+                addX = -1;
+                width = -width;
+            }
+
+            int i = width, threshold = width, errX = 0, errY = width / 2;
+            if (height > width) {
+                i = height;
+                threshold = height;
+                errX = height / 2;
+                errY = 0;
+            }
+            int x = x1, y = y1;
+            plotPoint(x, y);
+            while (i-- > 0) {
+                errY += height;
+                if (errY >= threshold) {
+                    errY -= threshold;
+                    y += addY;
+                }
+                errX += width;
+                if (errX >= threshold) {
+                    errX -= threshold;
+                    x += addX;
+                }
+                plotPoint(x, y);
+            }
+        }
 
         //0xF8: Fill.
-        void fill(int x, int y, int picColor, int priColor);
+        void fill(int x, int y) {
+            record Point(int x, int y) {
+                int getIndex() { return y * AgiPic.AGI_PIC_WIDTH + x; }
+            };
+
+            byte[] rasterCheck;
+            byte searchingFor;
+            if ((picColor != 15) && (picColor != -1)) {
+                rasterCheck = picture.pixels();
+                searchingFor = 15;
+            } else if ((picColor == -1) && (priColor != -1) && (priColor != 4)) {
+                rasterCheck = priority.pixels();
+                searchingFor = 4;
+            } else {
+                return;  // nothing to do!
+            }
+            final var maxWid = AgiPic.AGI_PIC_WIDTH - 1;
+            final var maxHt = AgiPic.AGI_PIC_HEIGHT - 1;
+
+            final var queue = new ArrayDeque<Point>();
+            Point p = new Point(x, y);
+
+            while (p != null) {
+                final int baseIndex = p.getIndex();
+                if (rasterCheck[baseIndex] == searchingFor) {
+                    plotPoint(p.x(), p.y());
+                    if ((p.x() > 0) && (rasterCheck[baseIndex - 1] == searchingFor)) {
+                        queue.add(new Point(p.x() - 1, p.y()));
+                    }
+                    if ((p.y() > 0) && (rasterCheck[baseIndex - AgiPic.AGI_PIC_WIDTH] == searchingFor)) {
+                        queue.add(new Point(p.x(), p.y() - 1));
+                    }
+                    if ((p.x() < maxWid) && (rasterCheck[baseIndex + 1] == searchingFor)) {
+                        queue.add(new Point(p.x() + 1, p.y()));
+                    }
+                    if ((p.y() < maxHt) && (rasterCheck[baseIndex + AgiPic.AGI_PIC_WIDTH] == searchingFor)) {
+                        queue.add(new Point(p.x(), p.y() + 1));
+                    }
+                }
+                p = queue.pollLast();
+            }
+        }
 
         //0xF9: Change pen size and style.
         //0xFA: Plot with pen.
-        void plotPoint(int x, int y, int picColor, int priColor);
-
-        // 0xFF
-        void endPicture();
+        void plotPoint(int x, int y) {
+            final int idx = y*AgiPic.AGI_PIC_WIDTH + x;
+            if(picColor != -1) {
+                picture.pixels()[idx] = picColor;
+            }
+            if(priColor != -1) {
+                priority.pixels()[idx] = priColor;
+            }
+        }
 
     }
 
-    private final byte[] data;
     /* the resource data bytes */
+    private byte[] data;
+
+    private AgiPic.Image picture;
+    private AgiPic.Image priority;
+    private final Plotter plotter;
+
+    /* the current drawing colors, or -1 if not drawing */
+    private byte picColor, priColor;
 
     private final PicPen rectanglePen; /* the pen we will use for rectangles */
     private final PicPen circlePen; /* the pen we will use for drawing circles */
@@ -69,67 +138,80 @@ public class PicResource {
     private final PenPattern splatterPattern; /* the splatter pattern we will use */
     private PenPattern currentPattern; /* the current pattern (either solid or splatter */
 
-    PicResource(final byte[] src, final PicPen rectPen, final PicPen circPen) {
-        data = src;
-        rectanglePen = rectPen;
-        circlePen = circPen;
+    public PicResource(GameMetaData meta) {
+        data = null;
+        picture = null;
+        priority = null;
+        picColor = -1;
+        priColor = -1;
+        plotter = new Plotter();
+        rectanglePen = new RectanglePen();
+        circlePen = (meta.isV3()) ? new V3CirclePen() : new CirclePen();
         currentPen = rectanglePen;
         currentPen.setSize(0);
         splatterPattern = new SplatterPattern();
         currentPattern = SolidPenPattern.INSTANCE;
     }
 
-    public void build(final Builder b) throws AgiException {
+    public AgiPic build(final byte[] src) throws AgiException {
         try {
-            int picColor = -1; // -1 means nothing
-            int priColor = -1; // -1 means nothing
+            // initial conditions...
+            data = src;
+            picture = new AgiPic.Image();
+            priority = new AgiPic.Image();
+            plotter.clear();
+            picColor = -1; // -1 means nothing
+            priColor = -1; // -1 means nothing
 
-            b.startPicture(PIC_DIMENSIONS.width, PIC_DIMENSIONS.height, 15, 4);
-
+            // run through the pic data and draw...
             int idx = 0;
             while (idx < data.length) {
                 switch (data[idx++] & 0xff) {
                     case 0xf0 ->
-                        picColor = (data[idx++] & 0xff);
+                        picColor = (byte)(data[idx++] & 0x0f);
                     case 0xf1 ->
                         picColor = -1;
                     case 0xf2 ->
-                        priColor = (data[idx++] & 0xff);
+                        priColor = (byte)(data[idx++] & 0x0f);
                     case 0xf3 ->
                         priColor = -1;
                     case 0xf4 ->
-                        idx = drawCorners(b, picColor, priColor, true, idx);
+                        idx = drawCorners(true, idx);
                     case 0xf5 ->
-                        idx = drawCorners(b, picColor, priColor, false, idx);
+                        idx = drawCorners(false, idx);
                     case 0xf6 ->
-                        idx = drawLines(b, picColor, priColor, idx);
+                        idx = drawLines(idx);
                     case 0xf7 ->
-                        idx = drawRelativeLines(b, picColor, priColor, idx);
+                        idx = drawRelativeLines(idx);
                     case 0xf8 ->
-                        idx = drawFill(b, picColor, priColor, idx);
+                        idx = drawFill(idx);
                     case 0xf9 ->
                         idx = getPen(idx);
                     case 0xfa ->
-                        idx = drawPen(b, picColor, priColor, idx);
+                        idx = drawPen(idx);
                     case 0xff -> {
                         if (idx != data.length) {
                             throw new AgiException("Extraneous data after end of PIC!");
                         }
-                        b.endPicture();
                     }
                     default ->
                         throw new AgiException("Malformed PIC resource -- saw " + Byte.toString(data[idx - 1]));
-
                 }
             }
+            return new AgiPic(picture, priority);
         } catch (AgiException agie) {
             throw agie;
         } catch (Exception e) {
             throw new AgiException("Error while parsing PIC", e);
+        } finally {
+            // be defensive and release our claim on this memory in case this is ever a long-lived, re-used
+            // PicResource.
+            picture = null;
+            priority = null;
         }
     }
 
-    private int drawCorners(final Builder b, int picColor, int priColor, boolean changeY, int idx) {
+    private int drawCorners(boolean changeY, int idx) {
         // first, we get the start coords...
         int x = data[idx++] & 0xff;
         if (x >= 0xf0) {
@@ -154,7 +236,7 @@ public class PicResource {
             } else {
                 x2 = clipX(nextCoord);
             }
-            b.line(x, y, x2, y2, picColor, priColor);
+            plotter.line(x, y, x2, y2);
             drewLine = true;
             changeY = !changeY;
             x = x2;
@@ -164,12 +246,12 @@ public class PicResource {
 
         // if no lines were specified, at least draw the initial point.
         if (!drewLine) {
-            b.plotPoint(x, y, picColor, priColor);
+            plotter.plotPoint(x, y);
         }
         return idx;
     }
 
-    private int drawLines(Builder b, int picColor, int priColor, int idx) {
+    private int drawLines(int idx) {
         // first, we get the start coords...
         int x = data[idx++] & 0xff;
         if (x >= 0xf0) {
@@ -198,7 +280,7 @@ public class PicResource {
                 break;
             }
             y2 = clipY(y2);
-            b.line(x, y, x2, y2, picColor, priColor);
+            plotter.line(x, y, x2, y2);
             drewLine = true;
             x = x2;
             y = y2;
@@ -206,12 +288,12 @@ public class PicResource {
 
         // if no lines were specified, at least draw the initial point.
         if (!drewLine) {
-            b.plotPoint(x, y, picColor, priColor);
+            plotter.plotPoint(x, y);
         }
         return idx;
     }
 
-    private int drawRelativeLines(Builder b, int picColor, int priColor, int idx) {
+    private int drawRelativeLines(int idx) {
         // first, we get the start coords...
         boolean drewLine = false;
         int x = data[idx++] & 0xff;
@@ -231,7 +313,7 @@ public class PicResource {
         while (relmove < 0xf0) {
             final int x2 = clipX(x + (((relmove & 0x80) == 0x80) ? -1 : 1) * ((relmove >> 4) & 0x7));
             final int y2 = clipY(y + (((relmove & 0x08) == 0x08) ? -1 : 1) * (relmove & 0x7));
-            b.line(x, y, x2, y2, picColor, priColor);
+            plotter.line(x, y, x2, y2);
             relmove = data[++idx] & 0xff;
             drewLine = true;
             x = x2;
@@ -240,12 +322,12 @@ public class PicResource {
 
         // if no lines were specified, at least draw the initial point.
         if (!drewLine) {
-            b.plotPoint(x, y, picColor, priColor);
+            plotter.plotPoint(x, y);
         }
         return idx;
     }
 
-    private int drawFill(Builder b, int picColor, int priColor, int idx) {
+    private int drawFill(int idx) {
         // read points and fill...
         while (true) {
             final int x = data[idx++] & 0xff;
@@ -258,7 +340,7 @@ public class PicResource {
                 --idx;
                 break;
             }
-            b.fill(clipX(x), clipY(y), picColor, priColor);
+            plotter.fill(clipX(x), clipY(y));
         }
         return idx;
     }
@@ -273,7 +355,7 @@ public class PicResource {
         return idx;
     }
 
-    private int drawPen(Builder b, int picColor, int priColor, int idx) {
+    private int drawPen(int idx) {
         // read points and fill...
         while (true) {
             if (currentPattern.takesArgument()) {
@@ -294,16 +376,16 @@ public class PicResource {
                 --idx;
                 break;
             }
-            currentPen.drawAt(b, x, y, picColor, priColor, currentPattern);
+            currentPen.drawAt(plotter, x, y, currentPattern);
         }
         return idx;
     }
 
     private int clipX(int x) {
-        return (x < 0) ? 0 : ((x >= PIC_DIMENSIONS.width) ? PIC_DIMENSIONS.width - 1 : x);
+        return (x < 0) ? 0 : ((x >= AgiPic.AGI_PIC_WIDTH) ? AgiPic.AGI_PIC_WIDTH - 1 : x);
     }
 
     private int clipY(int y) {
-        return (y < 0) ? 0 : ((y >= PIC_DIMENSIONS.height) ? PIC_DIMENSIONS.height - 1 : y);
+        return (y < 0) ? 0 : ((y >= AgiPic.AGI_PIC_HEIGHT) ? AgiPic.AGI_PIC_HEIGHT - 1 : y);
     }
 }
