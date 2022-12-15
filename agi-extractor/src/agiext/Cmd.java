@@ -2,9 +2,7 @@ package agiext;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
 import java.nio.charset.StandardCharsets;
 
 import org.rwtodd.agires.*;
@@ -12,6 +10,7 @@ import org.rwtodd.args.*;
 
 import java.util.List;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import javax.sound.midi.InvalidMidiDataException;
 
 /**
@@ -53,6 +52,7 @@ public class Cmd {
     public static void main(String[] args) {
         final var gameDir = new ExistingDirectoryParam(List.of("dir", "d"), Path.of("."), "<Directory>The game directory (defualt: current dir)");
         final var doCSound = new IntListOrAll(List.of("csound"), "<Resource List>Write csound scores for SOUND resources");
+        final var exampleOrcs = new FlagParam(List.of("orchestras"), "output example CSound orchestra files for use with csound output");
         final var doMidi = new IntListOrAll(List.of("midi"), "<Resource List>Write MIDI scores for SOUND resources");
         final var doWords = new FlagParam(List.of("words"), "Write out the WORDS.TOK resources");
         final var doObjects = new FlagParam(List.of("objects"), "Write out the OBJECTS resources");
@@ -63,7 +63,7 @@ public class Cmd {
         final var doLogics = new IntListOrAll(List.of("logics"), "<Resource List>Write disassembled LOGIC script resources");
         final var doViews = new IntListOrAll(List.of("views"), "<Resource List>Write GIFs of the VIEW resources");
         final var help = new FlagParam(List.of("help"), "Print this help text.");
-        final var parser = new Parser(gameDir, doCSound, doMidi, doWords, doObjects, doPics,
+        final var parser = new Parser(gameDir, doCSound, exampleOrcs, doMidi, doWords, doObjects, doPics,
                 imgScale, noAspectRatio, picStepsFlag, doLogics, doViews, help);
 
         try {
@@ -86,6 +86,10 @@ public class Cmd {
                 System.out.printf("There are %d maximum animated objects.\n", resLoader.getMaxAnimatedObjects());
 
                 runCSoundExtractor(resLoader, doCSound.getValue());
+                if(exampleOrcs.getValue())  {
+                    Stream.of("agi-pcspeaker.orc","agi-tandy.orc","agi-pwm.orc","agi-synth.orc")
+                            .forEach(Cmd::copyOutOrchestraFile);
+                }
                 runMidiExtractor(resLoader, doMidi.getValue());
                 if (doWords.getValue()) runWordDescription(resLoader.getDictionary());
                 if (doObjects.getValue())  runObjectsDescription(resLoader.getInitialGameObjects());
@@ -103,7 +107,18 @@ public class Cmd {
             System.exit(1);
         }
     }
-    
+
+    private static void copyOutOrchestraFile(String fname) {
+        try {
+            System.out.printf("[CSOUND] Copying example orchestra %s\n", fname);
+            try(final var pwm = Cmd.class.getResourceAsStream(fname)) {
+                Files.copy(pwm, Paths.get(fname), StandardCopyOption.REPLACE_EXISTING);
+            }
+        } catch(IOException ioe) {
+            System.err.println("Error trying to copy example orchestra file: " + ioe.getMessage());
+        }
+    }
+
     private static void runOneCSound(final int num, final AgiResourceLoader resLoader) {
         try {
             System.out.println("[CSOUND] Loading sound " + num);
@@ -197,7 +212,7 @@ public class Cmd {
     
     private static void runOnePic(final int number, final AgiResourceLoader resLoader, int scaleFactor, boolean correctAR, boolean showSteps) {
         try {
-            System.out.println("Loading PIC " + number);
+            System.out.println("[PIC] Loading picture " + number);
             final String baseName = String.format("pic_%03d", number);
             final AgiPic pic = resLoader.loadPic(number); // TODO handle showsteps
             var scaled = PngImage.scaleUp(PngImage.imageFromPic(resLoader, pic.picture()),scaleFactor,correctAR);
@@ -221,7 +236,7 @@ public class Cmd {
     
     private static void runOneLogic(final int number, final AgiResourceLoader resloader) {
         try {
-            System.out.println("Loading LOGIC " + number);
+            System.out.println("[LOGIC] Loading script " + number);
             final var res = resloader.loadLogic(number);
             final var outPath = Paths.get(String.format("logic_%04d.txt", number));
             
@@ -246,7 +261,7 @@ public class Cmd {
     
     private static void runOneView(final int number, final AgiResourceLoader resLoader, int scaleFactor, boolean correctAR) {
         try {
-            System.out.println("Loading VIEW " + number);
+            System.out.println("[VIEW] Loading view " + number);
             final var view = resLoader.loadView(number);
 
             if (view.description().isPresent()) {

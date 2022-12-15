@@ -13,10 +13,10 @@ gaLeft		init	0.0
 gaRight 	init	0.0
 
 
-;; load up the "FatBoy" soundfont into the fluidEngine
-;; (it's at https://fatboy.site/)
+;; TODO by user...  load up a soundfont into the fluidEngine from a location on your disk
+;; e.g. use FatBoy (it's at https://fatboy.site/) or FluidR3 see comment lines below
 giengine fluidEngine
-gisfnum	 fluidLoad "H:\\OneDrive\\WATMM\\SoundFonts\\FatBoy-v0.786.sf2", giengine ;; , 1
+;;gisfnum	 fluidLoad "H:\\OneDrive\\WATMM\\SoundFonts\\FatBoy-v0.786.sf2", giengine ;; , 1
 ;;gisfnum	 fluidLoad "H:\\OneDrive\\WATMM\\SoundFonts\\FluidR3_GM.sf2", giengine ;; , 1 
 
 instr 1       ;; set program
