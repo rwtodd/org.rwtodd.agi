@@ -5,6 +5,7 @@ import org.rwtodd.agires.util.Util;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * A resource loader for all AGI games.  Unlike many classes in this package, small
@@ -95,17 +96,17 @@ public class AgiResourceLoader implements java.io.Closeable {
         }
     }
 
-    public AgiPic loadPic(int number) throws AgiException, ResourceNotPresentException {
+    public AgiPic loadPic(int number, Consumer<AgiPic.Image> observer) throws AgiException, ResourceNotPresentException {
         final var dirEntry = rdir.findPic(number);
         if (!dirEntry.isPresent()) {
             throw new ResourceNotPresentException("PIC resource " + number + " isn't present!");
         }
-        return loadPic(number, dirEntry);
+        return loadPic(number, dirEntry, observer);
     }
 
-    protected AgiPic loadPic(int number, DirEntry de) throws AgiException, ResourceNotPresentException {
+    protected AgiPic loadPic(int number, DirEntry de, Consumer<AgiPic.Image> observer) throws AgiException, ResourceNotPresentException {
         final var resbytes = vmgr.getResource(de);
-        return new PicResource(meta).build(resbytes);
+        return new PicResource(meta, observer).build(resbytes);
     }
 
     public AgiLogicScript loadLogic(int number) throws AgiException, ResourceNotPresentException {

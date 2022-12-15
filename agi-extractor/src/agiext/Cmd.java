@@ -9,6 +9,7 @@ import org.rwtodd.agires.*;
 import org.rwtodd.args.*;
 
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import javax.sound.midi.InvalidMidiDataException;
@@ -112,6 +113,7 @@ public class Cmd {
         try {
             System.out.printf("[CSOUND] Copying example orchestra %s\n", fname);
             try(final var pwm = Cmd.class.getResourceAsStream(fname)) {
+                if(pwm == null) throw new IOException("Can't find resource!");
                 Files.copy(pwm, Paths.get(fname), StandardCopyOption.REPLACE_EXISTING);
             }
         } catch(IOException ioe) {
@@ -210,11 +212,24 @@ public class Cmd {
         }
     }
     
-    private static void runOnePic(final int number, final AgiResourceLoader resLoader, int scaleFactor, boolean correctAR, boolean showSteps) {
+    private static void runOnePic(final int number, final AgiResourceLoader resLoader, final int scaleFactor, final boolean correctAR, final boolean showSteps) {
         try {
             System.out.println("[PIC] Loading picture " + number);
             final String baseName = String.format("pic_%03d", number);
-            final AgiPic pic = resLoader.loadPic(number); // TODO handle showsteps
+            final var observer = !showSteps ? null : new Consumer<AgiPic.Image>() {
+                int stepNo = 0;
+                @Override
+                public void accept(AgiPic.Image image) {
+                    final var stepName = String.format("%s_step_%04d.png", baseName, ++stepNo);
+                    try {
+                        final var scaled = PngImage.scaleUp(PngImage.imageFromPic(resLoader, image), scaleFactor, correctAR);
+                        PngImage.writeImage(Paths.get(stepName), scaled);
+                    } catch(Exception e) {
+                        System.err.println("Error trying to write PIC step-image " + stepName + " " + e.getMessage());
+                    }
+                }
+            };
+            final AgiPic pic = resLoader.loadPic(number, observer);
             var scaled = PngImage.scaleUp(PngImage.imageFromPic(resLoader, pic.picture()),scaleFactor,correctAR);
             PngImage.writeImage(Paths.get(baseName+".png"), scaled);
             scaled = PngImage.scaleUp(PngImage.imageFromPic(resLoader, pic.priority()), scaleFactor, correctAR);

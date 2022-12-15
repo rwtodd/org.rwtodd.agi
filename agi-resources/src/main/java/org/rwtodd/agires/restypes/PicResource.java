@@ -6,6 +6,7 @@ import org.rwtodd.agires.GameMetaData;
 
 import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.function.Consumer;
 
 /**
  * Represents the AGI Picture (background). It does minimal interpretation and
@@ -17,6 +18,14 @@ import java.util.Arrays;
 public class PicResource {
 
     class Plotter {
+        private static final int DEFAULT_OBS_RATE = 8;
+        private static final int FILLING_RATE = 400;
+        private final Consumer<AgiPic.Image> observer;
+        private int pixelCount;
+        private int pixelRate; /* the rate at which we trigger the observer */
+
+        Plotter(Consumer<AgiPic.Image> o) { observer = o; pixelCount = 0; pixelRate = 10; }
+
         void clear() {
             // AGI images always clear to white, with priority 4 everywhere
             Arrays.fill(picture.pixels(),(byte)15);
@@ -85,7 +94,7 @@ public class PicResource {
 
             final var queue = new ArrayDeque<Point>();
             Point p = new Point(x, y);
-
+            pixelRate = FILLING_RATE;
             while (p != null) {
                 final int baseIndex = p.getIndex();
                 if (rasterCheck[baseIndex] == searchingFor) {
@@ -105,6 +114,7 @@ public class PicResource {
                 }
                 p = queue.pollLast();
             }
+            pixelRate = DEFAULT_OBS_RATE;
         }
 
         //0xF9: Change pen size and style.
@@ -113,12 +123,24 @@ public class PicResource {
             final int idx = y*AgiPic.AGI_PIC_WIDTH + x;
             if(picColor != -1) {
                 picture.pixels()[idx] = picColor;
+
+                // add an observer every 10 pixels...
+                if(observer != null && pixelCount++ > pixelRate) {
+                    observer.accept(picture);
+                    pixelCount = 0;
+                }
             }
             if(priColor != -1) {
                 priority.pixels()[idx] = priColor;
             }
         }
 
+        void imageComplete() {
+            // if we are observed, send out the image one last time
+            if(observer != null && pixelCount > 0) {
+                observer.accept(picture);
+            }
+        }
     }
 
     /* the resource data bytes */
@@ -138,13 +160,13 @@ public class PicResource {
     private final PenPattern splatterPattern; /* the splatter pattern we will use */
     private PenPattern currentPattern; /* the current pattern (either solid or splatter */
 
-    public PicResource(GameMetaData meta) {
+    public PicResource(GameMetaData meta, Consumer<AgiPic.Image> observer) {
         data = null;
         picture = null;
         priority = null;
         picColor = -1;
         priColor = -1;
-        plotter = new Plotter();
+        plotter = new Plotter(observer);
         rectanglePen = new RectanglePen();
         circlePen = (meta.isV3()) ? new V3CirclePen() : new CirclePen();
         currentPen = rectanglePen;
@@ -152,6 +174,8 @@ public class PicResource {
         splatterPattern = new SplatterPattern();
         currentPattern = SolidPenPattern.INSTANCE;
     }
+
+    public PicResource(GameMetaData meta) { this(meta, null); }
 
     public AgiPic build(final byte[] src) throws AgiException {
         try {
@@ -198,6 +222,7 @@ public class PicResource {
                         throw new AgiException("Malformed PIC resource -- saw " + Byte.toString(data[idx - 1]));
                 }
             }
+            plotter.imageComplete();
             return new AgiPic(picture, priority);
         } catch (AgiException agie) {
             throw agie;
