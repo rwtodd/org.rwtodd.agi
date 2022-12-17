@@ -24,7 +24,7 @@ class DummyVolMgr implements VolumeManager {
         cannedWords = words;
         if(objects == null) {
             objects = new byte[] {
-                    3,0,16,  // object names start at index 6, 16 maxumum animated
+                    3,0,16,  // object names start at index 6, 16 maximum animated
                     3,0,1,   // the only object is named at 6 and starts in room 1
                     'b','o','o','k',0 // the object is named "book"
             };
