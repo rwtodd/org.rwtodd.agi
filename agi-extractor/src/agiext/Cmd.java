@@ -57,10 +57,10 @@ public class Cmd {
         final var doMidi = new IntListOrAll(List.of("midi"), "<Resource List>Write MIDI scores for SOUND resources");
         final var doWords = new FlagParam(List.of("words"), "Write out the WORDS.TOK resources");
         final var doObjects = new FlagParam(List.of("objects"), "Write out the OBJECTS resources");
-        final var doPics = new IntListOrAll(List.of("pics"), "<Resource List>Write GIFs of the PIC resources");
+        final var doPics = new IntListOrAll(List.of("pics"), "<Resource List>Write PNGs of the PIC resources");
         final var imgScale = new IntParam(List.of("scale"), 3, "<Factor>How much to scale images up (default 3)");
         final var noAspectRatio = new FlagParam(List.of("noAR"), "Don't correct the aspect ratio for modern square pixels");
-        final var picStepsFlag = new FlagParam(List.of("picsteps"), "Write intermediate PIC images as PICs are drawn");
+        final var picStepsFlag = new FlagParam(List.of("picsteps"), "Write intermediate PNG images as PICs are drawn");
         final var doLogics = new IntListOrAll(List.of("logics"), "<Resource List>Write disassembled LOGIC script resources");
         final var doViews = new IntListOrAll(List.of("views"), "<Resource List>Write GIFs of the VIEW resources");
         final var help = new FlagParam(List.of("help"), "Print this help text.");

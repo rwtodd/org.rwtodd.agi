@@ -29,11 +29,12 @@ public interface VolumeManager extends Closeable {
     }
 
     /**
-     * Gets the raw data for the resource at a {@link DirEntry}.
-     * @param de the directory entry for the wanted resource.  Any LZW decompression
-     * is done here, and the version 3 PIC compression is undone at this level as well.
+     * Gets the data for the resource at a {@link DirEntry}.
+     * Any LZW decompression is done here, and the version 3 PIC compression
+     * is undone at this level as well.
      *
-     * @return the raw bytes of the resource.
+     * @param de the directory entry for the wanted resource.*
+     * @return the decompressed bytes of the resource.
      * @throws AgiException if there is a problem retrieving the bytes
      * @throws ResourceNotPresentException if the {@code de} param points to a non-existent resource.
      */
