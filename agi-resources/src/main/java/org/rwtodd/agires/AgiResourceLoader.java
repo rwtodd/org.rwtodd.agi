@@ -22,6 +22,17 @@ public class AgiResourceLoader implements java.io.Closeable {
     private final List<AgiObject> initialObjects;
     private final int maxAnimated;
 
+    /**
+     * Construct an {@code AgiResourceLoader} with an explicit {@link ResourceDirectory} and
+     * {@link VolumeManager}.  Most users will use the {@link #AgiResourceLoader(GameMetaData)}
+     * constructor, since the defaults are sane and adapt to different engine versions.  However,
+     * for unit testing, this constructor is useful to set up mocking for resource data.
+     *
+     * @param meta the game metadata
+     * @param rd the resource directory to use
+     * @param vm the volume manager to use
+     * @throws AgiException if there is a problem constructing the {@code AgiResourceLoader}.
+     */
     public AgiResourceLoader(
             GameMetaData meta,
             final ResourceDirectory rd,
@@ -56,36 +67,76 @@ public class AgiResourceLoader implements java.io.Closeable {
         this(meta, ResourceDirectory.createDefault(meta), VolumeManager.createDefault(meta));
     }
 
+    /**
+     * Closes the system resources used by the resource loader.
+     * @throws IOException if a problem occurs while closing the resources.
+     */
     @Override
     public void close() throws IOException {
         vmgr.close();
     }
 
+    /**
+     * Get the number 1 past the highest ssound resource in the game. <b>Note</b>: some
+     * resources may not be present, so this isn't strictly speaking the number of resources.
+     * @return the highest resource number, plus 1.
+     */
     public int getSoundCount() {
         return rdir.getSoundCount();
     }
 
+    /**
+     * Get the number 1 past the highest pic resource in the game. <b>Note</b>: some
+     * resources may not be present, so this isn't strictly speaking the number of resources.
+     * @return the highest resource number, plus 1.
+     */
     public int getPicCount() {
         return rdir.getPicCount();
     }
 
+    /**
+     * Get the number 1 past the highest view resource in the game. <b>Note</b>: some
+     * resources may not be present, so this isn't strictly speaking the number of resources.
+     * @return the highest resource number, plus 1.
+     */
     public int getViewCount() {
         return rdir.getViewCount();
     }
 
+    /**
+     * Get the number 1 past the highest logic resource in the game. <b>Note</b>: some
+     * resources may not be present, so this isn't strictly speaking the number of resources.
+     * @return the highest resource number, plus 1.
+     */
     public int getLogicCount() {
         return rdir.getLogicCount();
     }
 
+    /**
+     * Load a sound resource by number, and return a representation of the sound.
+     *
+     * @param number the number of the resource to load
+     * @return the sound/song
+     * @throws AgiException if there is a problem loading or parsing the sound
+     * @throws ResourceNotPresentException if teh resource isn't actually in the data.
+     * @see AgiSound
+     */
     public AgiSound loadSound(int number) throws AgiException, ResourceNotPresentException {
         final var dirEntry = rdir.findSound(number);
         if (!dirEntry.isPresent()) {
             throw new ResourceNotPresentException("Sound resource " + number + " isn't present!");
         }
-        return loadSound(number, dirEntry);
+        return loadSound(dirEntry);
     }
 
-    protected AgiSound loadSound(int number, DirEntry de) throws AgiException, ResourceNotPresentException {
+    /**
+     * Load a sound for a given directory entry.
+     * @param de the directory entry for the resource
+     * @return the sound resourse
+     * @throws AgiException if there was a problem extracting or decoding the sound
+     * @throws ResourceNotPresentException if the requested resource does not exist.
+     */
+    protected AgiSound loadSound(DirEntry de) throws AgiException, ResourceNotPresentException {
         try {
             final var resbytes = vmgr.getResource(de);
             return SoundResource.build(resbytes);
@@ -146,6 +197,13 @@ public class AgiResourceLoader implements java.io.Closeable {
     public int getMaxAnimatedObjects() { return maxAnimated; }
     public GameMetaData getMetaData() { return meta; }
 
+    /**
+     * Get this game's palette, as an array of 16 ARGB integers.
+     * <b>Note</b>: for now we assume games are DOS and only return the
+     * standard EGA palette.  That could change in the future.
+     *
+     * @return the game's palette.
+     */
     public int[] getPalette() {
         // assume standard EGA palette for now. Might expand to the strange palettes of
         // non-PC versions of the games in the future.

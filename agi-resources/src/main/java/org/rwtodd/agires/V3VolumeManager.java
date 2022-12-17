@@ -9,10 +9,9 @@ import java.nio.file.Path;
 /**
  * A disk-backed volume manager for V3 AGI game.
  *
- * @author rwtodd
+ * @author Richard Todd
  */
-public class V3VolumeManager implements VolumeManager {
-
+class V3VolumeManager implements VolumeManager {
     private final FileCache fc;
     private final Path gamePath;
     private final String prefix;

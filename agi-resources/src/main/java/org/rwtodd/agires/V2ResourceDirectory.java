@@ -8,7 +8,7 @@ import java.nio.file.Path;
  * A resource directory for V1 an V2 AGI games.
  * @author rwtodd
  */
-public class V2ResourceDirectory implements ResourceDirectory {
+class V2ResourceDirectory implements ResourceDirectory {
 
     private final byte[] sounds, views, pics, logics;
 

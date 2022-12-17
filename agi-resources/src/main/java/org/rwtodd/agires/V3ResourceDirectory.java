@@ -8,7 +8,7 @@ import java.nio.file.Path;
  *
  * @author rwtodd
  */
-public class V3ResourceDirectory implements ResourceDirectory {
+class V3ResourceDirectory implements ResourceDirectory {
 
     private final byte[] dir;
     private final int logicOffs; // where the logic resources start
@@ -79,8 +79,7 @@ public class V3ResourceDirectory implements ResourceDirectory {
     /**
      * Perform the lookup of an item in a resource directory.
      *
-     * @param dir the bytes of the target directory
-     * @param number the number of the resource to look up
+     * @param index the index in the directory where the resource entry should be
      * @return the resulting DirEntry
      */
     private DirEntry lookupItem(final int index) {
