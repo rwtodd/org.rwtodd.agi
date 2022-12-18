@@ -122,13 +122,14 @@ public class PicResource {
         void plotPoint(int x, int y) {
             final int idx = y*AgiPic.AGI_PIC_WIDTH + x;
             if(picColor != -1) {
-                picture.pixels()[idx] = picColor;
-
-                // add an observer every 10 pixels...
-                if(observer != null && pixelCount++ > pixelRate) {
-                    observer.accept(picture);
-                    pixelCount = 0;
+                // add an observer every pixelRate pixels...
+                if(observer != null && (picture.pixels()[idx] != picColor) && (pixelCount++ > pixelRate)) {
+                        picture.pixels()[idx] = picColor;
+                        observer.accept(picture);
+                        pixelCount = 0;
                 }
+
+                picture.pixels()[idx] = picColor;
             }
             if(priColor != -1) {
                 priority.pixels()[idx] = priColor;
