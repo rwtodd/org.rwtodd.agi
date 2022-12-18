@@ -112,7 +112,7 @@ public class PicResource {
                         queue.add(new Point(p.x(), p.y() + 1));
                     }
                 }
-                p = queue.pollLast();
+                p = queue.pollFirst();
             }
             pixelRate = DEFAULT_OBS_RATE;
         }
