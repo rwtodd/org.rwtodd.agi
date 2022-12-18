@@ -147,6 +147,10 @@ public class AgiResourceLoader implements java.io.Closeable {
         }
     }
 
+    public AgiPic loadPic(int number) throws AgiException, ResourceNotPresentException {
+        return loadPic(number, null);
+    }
+
     public AgiPic loadPic(int number, Consumer<AgiPic.Image> observer) throws AgiException, ResourceNotPresentException {
         final var dirEntry = rdir.findPic(number);
         if (!dirEntry.isPresent()) {
@@ -154,6 +158,7 @@ public class AgiResourceLoader implements java.io.Closeable {
         }
         return loadPic(number, dirEntry, observer);
     }
+
 
     protected AgiPic loadPic(int number, DirEntry de, Consumer<AgiPic.Image> observer) throws AgiException, ResourceNotPresentException {
         final var resbytes = vmgr.getResource(de);
