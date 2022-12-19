@@ -7,7 +7,7 @@ import java.io.PrintWriter;
 
 /**
  * A GOTO Instruction
- * @author rwtodd
+ * @author Richard Todd
  */
 public class GotoInstruction implements Instruction {
     private final int relativeTarget;

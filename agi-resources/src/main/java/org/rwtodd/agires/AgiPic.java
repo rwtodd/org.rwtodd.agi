@@ -29,9 +29,10 @@ public record AgiPic(Image picture, Image priority) {
         if(answer >= 4) return answer;
 
         // it was a control line, so search for the right priority
-        while(answer < 4 && idx < (AGI_PIC_HEIGHT*AGI_PIC_WIDTH)) {
-            idx += AGI_PIC_WIDTH;
+        idx += AGI_PIC_WIDTH;
+        while(answer < 4 && idx < p.length) {
             answer = p[idx];
+            idx += AGI_PIC_WIDTH;
         }
         return (answer >= 4) ? answer : (byte)15;
     }

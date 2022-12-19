@@ -58,13 +58,14 @@ public class Cmd {
         final var doWords = new FlagParam(List.of("words"), "Write out the WORDS.TOK resources");
         final var doObjects = new FlagParam(List.of("objects"), "Write out the OBJECTS resources");
         final var doPics = new IntListOrAll(List.of("pics"), "<Resource List>Write PNGs of the PIC resources");
+        final var picViewsFlag = new FlagParam(List.of("picviews"), "Attempt to add views to the pic based on the logic script");
         final var imgScale = new IntParam(List.of("scale"), 3, "<Factor>How much to scale images up (default 3)");
         final var noAspectRatio = new FlagParam(List.of("noAR"), "Don't correct the aspect ratio for modern square pixels");
         final var picStepsFlag = new FlagParam(List.of("picsteps"), "Write intermediate PNG images as PICs are drawn");
         final var doLogics = new IntListOrAll(List.of("logics"), "<Resource List>Write disassembled LOGIC script resources");
         final var doViews = new IntListOrAll(List.of("views"), "<Resource List>Write GIFs of the VIEW resources");
         final var help = new FlagParam(List.of("help"), "Print this help text.");
-        final var parser = new Parser(gameDir, doCSound, exampleOrcs, doMidi, doWords, doObjects, doPics,
+        final var parser = new Parser(gameDir, doCSound, exampleOrcs, doMidi, doWords, doObjects, doPics, picViewsFlag,
                 imgScale, noAspectRatio, picStepsFlag, doLogics, doViews, help);
 
         try {
@@ -94,7 +95,8 @@ public class Cmd {
                 runMidiExtractor(resLoader, doMidi.getValue());
                 if (doWords.getValue()) runWordDescription(resLoader.getDictionary());
                 if (doObjects.getValue())  runObjectsDescription(resLoader.getInitialGameObjects());
-                runPics(resLoader, doPics.getValue(), imgScale.getValue(), !noAspectRatio.getValue(), picStepsFlag.getValue());
+                runPics(resLoader, doPics.getValue(), imgScale.getValue(), !noAspectRatio.getValue(),
+                        picStepsFlag.getValue(), picViewsFlag.getValue());
                 runViews(resLoader, doViews.getValue(), imgScale.getValue(), !noAspectRatio.getValue());
                 runLogics(resLoader, doLogics.getValue());
             }
@@ -212,7 +214,8 @@ public class Cmd {
         }
     }
     
-    private static void runOnePic(final int number, final AgiResourceLoader resLoader, final int scaleFactor, final boolean correctAR, final boolean showSteps) {
+    private static void runOnePic(final int number, final AgiResourceLoader resLoader, final int scaleFactor,
+                                  final boolean correctAR, final boolean showSteps, final boolean addViews) {
         try {
             System.out.println("[PIC] Loading picture " + number);
             final String baseName = String.format("pic_%03d", number);
@@ -230,6 +233,10 @@ public class Cmd {
                 }
             };
             final AgiPic pic = resLoader.loadPic(number, observer);
+            if(addViews) {
+                final var vm = new VMState(resLoader,pic, observer);
+                vm.loadAndRun(number);
+            }
             var scaled = PngImage.scaleUp(PngImage.imageFromPic(resLoader, pic.picture()),scaleFactor,correctAR);
             PngImage.writeImage(Paths.get(baseName+".png"), scaled);
             scaled = PngImage.scaleUp(PngImage.imageFromPic(resLoader, pic.priority()), scaleFactor, correctAR);
@@ -243,10 +250,11 @@ public class Cmd {
         }
     }
     
-    private static void runPics(final AgiResourceLoader resloader, IntStream which, int scaleFactor, boolean correctAR, boolean showSteps) {
+    private static void runPics(final AgiResourceLoader resloader, IntStream which, int scaleFactor, boolean correctAR,
+                                boolean showSteps, boolean picViews) {
         if(which == null) return;
         final int pc = resloader.getPicCount();
-        which.filter(idx -> idx < pc).forEach(idx -> runOnePic(idx, resloader, scaleFactor, correctAR, showSteps));
+        which.filter(idx -> idx < pc).forEach(idx -> runOnePic(idx, resloader, scaleFactor, correctAR, showSteps, picViews));
     }
     
     private static void runOneLogic(final int number, final AgiResourceLoader resloader) {
