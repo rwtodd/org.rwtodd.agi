@@ -284,13 +284,13 @@ class VMState {
 
     void loadAndRun(int resNumber) {
         try {
-            System.err.println("load and run " + resNumber); // FIXME
+            System.err.println(" - Calling script " + resNumber);
             var log = resLoader.loadLogic(resNumber);
             /* save IP/byteCode state ... */
-            /* if byteCode is null, this is the first room, and we should set %v0 to the number */
+            /* if byteCode is null, this is the first room, and we should set %v0/%v1 to the room numbers */
             if(byteCode == null) {
                 variables[0] = (byte)resNumber;
-                variables[1] = (byte)(resNumber - 1);
+                variables[1] = (byte)(resNumber - 1); /* assume we come from the previous room */
             }
             byte[] savedCodes = byteCode;
             int savedIp = ip;
