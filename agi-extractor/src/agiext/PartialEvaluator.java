@@ -353,8 +353,6 @@ class VMState {
         final var pbytes = agiPic.picture().pixels();
         final var rbytes = agiPic.priority().pixels();
 
-        System.err.printf(" - Adding %d x %d cell to pic at base (%d, %d).\n", cwidth, cheight, bx, by);
-
         // if the priority is 0, set it according to by...
          if(priority == 0) {
             priority = calculatePriorityByPosition(by);
@@ -712,7 +710,11 @@ class AddToPicInstruction extends Instruction {
         final int bx = vms.getRelativeToIp(4)&0xff;
         final int by = vms.getRelativeToIp(5)&0xff;
         final int pri = vms.getRelativeToIp(6)&0xff;
-        /* for this, we don't care about 7, as I think that's about control lines */
+        System.err.printf(" - Asked to add.to.pic View %d Loop %d cell %d at %d,%c with Priority %d\n",
+                which, loopNum, cellNum, bx, by, pri);
+        if(which == 0 || (bx == 0 && by == 0)) return; // don't draw EGO or at 0,0 ... probably an error
+
+        /* for this, we don't care about arg 7, as I think that's about control lines */
         final var v = vms.resLoader.loadView(which);
         if(loopNum < v.loops().size() && cellNum < v.loops().get(loopNum).cells().size()) {
             vms.drawInto(v.loops().get(loopNum).cells().get(cellNum),bx, by, pri);
@@ -736,6 +738,9 @@ class AddToPicVInstruction extends Instruction {
         final int bx = vms.variables[vms.getRelativeToIp(4)&0xff]&0xff;
         final int by = vms.variables[vms.getRelativeToIp(5)&0xff]&0xff;
         final int pri = vms.variables[vms.getRelativeToIp(6)&0xff]&0xff;
+        System.err.printf(" - Asked to add.to.pic.v View %d Loop %d cell %d at %d,%c with Priority %d\n",
+                which, loopNum, cellNum, bx, by, pri);
+        if(which == 0 || (bx == 0 && by == 0)) return; // don't draw EGO or at 0,0 ... probably an error
 
         /* for this, we don't care about 7, as I think that's about control lines */
         final var v = vms.resLoader.loadView(which);
@@ -898,9 +903,9 @@ class IfAndInstruction extends Instruction {
                 vms.ip += 6;
                 yield false;
             }
-            case 0x0D -> { // have.key()
+            case 0x0D -> { // have.key() needs to be true to avoid infinite busy-loops in scripts
                 ++vms.ip;
-                yield false;
+                yield true;
             }
             case 0x0E -> { // SAID  0x0E C (2*C-bytes)
                 vms.ip += (vms.getRelativeToIp(1)&0xff)*2 + 2;
@@ -977,6 +982,9 @@ record AnimatedObject(int view, int loop, int cell, int baseX, int baseY, int pr
     }
 
     void drawInto(VMState vms, AgiResourceLoader resLoader) throws AgiException {
+        System.err.printf(" - Asked to draw view %s\n", this.toString());
+        if(baseX == 0 && baseY == 0) return; // don't draw at 0,0 ... probably an error
+
         AgiView v = resLoader.loadView(view);
         if(loop >= v.loops().size()) {
             throw new AgiException("Bad loop number to load!");
