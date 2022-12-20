@@ -54,7 +54,7 @@ class VMState {
 
         rng = new Random();
 
-        // if we have an ovserver, set it..
+        // if we have an observer, set it..
         this.observer = observer;
     }
 
@@ -290,6 +290,7 @@ class VMState {
             /* if byteCode is null, this is the first room, and we should set %v0 to the number */
             if(byteCode == null) {
                 variables[0] = (byte)resNumber;
+                variables[1] = (byte)(resNumber - 1);
             }
             byte[] savedCodes = byteCode;
             int savedIp = ip;
@@ -350,6 +351,7 @@ class VMState {
         final var cheight = cell.getHeight();
         final var cbytes = cell.getPixels();
         final var pbytes = agiPic.picture().pixels();
+        final var rbytes = agiPic.priority().pixels();
 
         System.err.printf(" - Adding %d x %d cell to pic at base (%d, %d).\n", cwidth, cheight, bx, by);
 
@@ -378,6 +380,7 @@ class VMState {
                 final byte curVal = cbytes[cellIdx];
                 if(curVal != transparent && priority >= agiPic.priorityAtIndex(picIdx)) {
                     pbytes[picIdx] = curVal;
+                    rbytes[picIdx] = (byte)priority;
                 }
                 ++cellIdx;
                 ++picIdx;
