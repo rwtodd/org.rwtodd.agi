@@ -3,6 +3,7 @@ package agiext;
 import org.rwtodd.agires.*;
 
 import java.util.Arrays;
+import java.util.Random;
 import java.util.function.Consumer;
 
 /**
@@ -29,6 +30,10 @@ class VMState {
     /* let's track the state of the animated objects here */
     final AnimatedObject[] animatedObjects;
 
+    /** random state for the random(x,x,x) instruction */
+    final Random rng;
+
+    /** a consumer of images (used for outputting time-lapse frames */
     final Consumer<AgiPic.Image> observer;
 
     VMState(AgiResourceLoader resLoader, AgiPic pic, Consumer<AgiPic.Image> observer) {
@@ -46,6 +51,8 @@ class VMState {
         for(int i = 0; i < animatedObjects.length; ++i) {
             animatedObjects[i] = new AnimatedObject();
         }
+
+        rng = new Random();
 
         // if we have an ovserver, set it..
         this.observer = observer;
@@ -199,15 +206,15 @@ class VMState {
             new Instruction( 0), // "prevent.input", , 0x0
             new Instruction( 0), // 120 // "accept.input", , 0x0
             new Instruction( 3), // "set.key", , 0x311
-            new Instruction( 7), // "add.to.pic", , 0x1111111
-            new Instruction( 7), // "add.to.pic.v", , 0x4444444
+            new AddToPicInstruction(), // new Instruction( 7), // "add.to.pic", , 0x1111111
+            new AddToPicVInstruction(), // new Instruction( 7), // "add.to.pic.v", , 0x4444444
             new Instruction( 0), // "status", , 0x0
             new Instruction( 0), // 125 // "save.game", , 0x0
             new Instruction( 0), // "restore.game", , 0x0
             new Instruction( 0), // "init.disk", , 0x0
             new Instruction( 0), // "restart.game", , 0x0
             new Instruction( 1), // "show.obj", , 0x1
-            new Instruction( 3), // 130 // "random", , 0x411
+            new RandomInstruction(), // new Instruction( 3), // 130 // "random", , 0x411
             new Instruction( 0), // "program.control", , 0x0
             new Instruction( 0), // "player.control", , 0x0
             new Instruction( 1), // "obj.status.v", , 0x4
@@ -353,7 +360,18 @@ class VMState {
 
         // ok, draw the sucker, tracking indexes for performance...
         int cellIdx = 0;
-        int picBaseIdx = (by - cheight + 1)*AgiPic.AGI_PIC_WIDTH + bx;
+
+         // don't let it go off the right side or bottom side....
+         if(bx + cell.getWidth() >= AgiPic.AGI_PIC_WIDTH) {
+             bx = AgiPic.AGI_PIC_WIDTH - cell.getWidth();
+         }
+         if(by >= AgiPic.AGI_PIC_HEIGHT) {
+             by = AgiPic.AGI_PIC_HEIGHT - 1;
+         }
+
+         // don't let the y value go negative... max of it and zero...
+        int picBaseIdx = Math.max(by - cheight + 1, 0)*AgiPic.AGI_PIC_WIDTH + bx;
+
         for(int countY = 0; countY < cheight; ++countY) {
             int picIdx = picBaseIdx;
             for(int countX = 0; countX < cwidth; ++countX) {
@@ -675,6 +693,65 @@ class PositionVInstruction extends Instruction {
         }
         vms.animatedObjects[which] = vms.animatedObjects[which].setPosition(px, py);
         super.eval(vms); // skip to next instruction
+    }
+}
+
+/**
+ * Adds a view cell to the picture, without using an animated slot.
+ * {@code add.to.pic(view, loop, cell, x, y, pri, boxpri)}.
+ */
+class AddToPicInstruction extends Instruction {
+    AddToPicInstruction() { super(7); }
+    @Override void eval(VMState vms) throws AgiException {
+        final int which = vms.getRelativeToIp(1)&0xff;
+        final int loopNum = vms.getRelativeToIp(2)&0xff;
+        final int cellNum = vms.getRelativeToIp(3)&0xff;
+        final int bx = vms.getRelativeToIp(4)&0xff;
+        final int by = vms.getRelativeToIp(5)&0xff;
+        final int pri = vms.getRelativeToIp(6)&0xff;
+        /* for this, we don't care about 7, as I think that's about control lines */
+        final var v = vms.resLoader.loadView(which);
+        if(loopNum < v.loops().size() && cellNum < v.loops().get(loopNum).cells().size()) {
+            vms.drawInto(v.loops().get(loopNum).cells().get(cellNum),bx, by, pri);
+        } else {
+            System.err.println("add.to.pic asked for out-of-bounds view-loop-cell.");
+        }
+        super.eval(vms);
+    }
+}
+
+/**
+ * Adds a view cell to the picture, without using an animated slot.
+ * {@code add.to.pic(view, loop, cell, x, y, pri, boxpri)}.
+ */
+class AddToPicVInstruction extends Instruction {
+    AddToPicVInstruction() { super(7); }
+    @Override void eval(VMState vms) throws AgiException {
+        final int which = vms.variables[vms.getRelativeToIp(1)&0xff]&0xff;
+        final int loopNum = vms.variables[vms.getRelativeToIp(2)&0xff]&0xff;
+        final int cellNum = vms.variables[vms.getRelativeToIp(3)&0xff]&0xff;
+        final int bx = vms.variables[vms.getRelativeToIp(4)&0xff]&0xff;
+        final int by = vms.variables[vms.getRelativeToIp(5)&0xff]&0xff;
+        final int pri = vms.variables[vms.getRelativeToIp(6)&0xff]&0xff;
+
+        /* for this, we don't care about 7, as I think that's about control lines */
+        final var v = vms.resLoader.loadView(which);
+        if(loopNum < v.loops().size() && cellNum < v.loops().get(loopNum).cells().size()) {
+            vms.drawInto(v.loops().get(loopNum).cells().get(cellNum),bx, by, pri);
+        } else {
+            System.err.println("add.to.pic asked for out-of-bounds view-loop-cell.");
+        }
+        super.eval(vms);
+    }
+}
+
+class RandomInstruction extends Instruction {
+    RandomInstruction() { super(3); }
+    @Override void eval(VMState vms) throws AgiException {
+        final int lower = vms.getRelativeToIp(1)&0xff;
+        final int upper = vms.getRelativeToIp(2)&0xff;
+        vms.variables[vms.getRelativeToIp(3)&0xff] = (byte)(vms.rng.nextInt(lower, upper+1));
+        super.eval(vms);
     }
 }
 
