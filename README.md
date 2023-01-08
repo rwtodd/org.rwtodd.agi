@@ -25,11 +25,11 @@ Look, I know I should probably to add more here, but I'm lazy.  It's a gradle pr
 
     ./gradlew assemble
 
-... and there's a custom task `aE:rcl` to print out a java command you can run for the extractor.  It can also 
-be `jlink`'ed or `jpackage`'ed and what not but I haven't bothered to do it yet.
+... and there's a custom task `aE:runcmd` to print out a java command you can run for the extractor. 
+It can also be `jlink`'ed or `jpackage`'ed and what not but I haven't bothered to do it yet.
 
 It's a modular (JMPS) project, which can be confusing if you've never dealt with it before.  For example, if you
-aren't careful how you run it, the parts of the code that want to load jar resources will fail.  The `eE:rcl` task's command fails for those tasks too.   What a deal!  We suffer for our art.
+aren't careful how you run it, the parts of the code that want to load jar resources will fail.  The 'aE:runcmd' task output uses all the modular jars so that resource loading always works.
 
 When you run it, ask for `--help` to see all the command-line switches.  The switches for numbered resources all take lists, like so:
 

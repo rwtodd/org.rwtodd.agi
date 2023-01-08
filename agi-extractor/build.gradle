@@ -20,8 +20,15 @@ application {
     applicationDefaultJvmArgs = ['-Dswing.metalTheme=steel']
 }
 
-task rcl {
+task runcmd(dependsOn: assemble) {
     doLast {
-        println("java -p '${sourceSets.main.runtimeClasspath.asPath}' -m agiext")
+        def cp = sourceSets.main.runtimeClasspath.findAll { it.name.endsWith(".jar") }
+        cp << new File(projectDir,'build/libs/agi-extractor-1.0.0.jar').absolutePath
+        if (System.properties['os.name'].toLowerCase().contains('windows')) {
+            cp = cp.join(";")
+        } else {
+            cp = cp.join(":")
+        }
+        println("java -p '${cp}' -m agiext")
     }
 }
