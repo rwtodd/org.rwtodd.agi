@@ -1,12 +1,13 @@
 package agiext;
 
+import org.rwtodd.agires.*;
+import org.rwtodd.args.*;
+import agiext.evaluator.VMState;
+
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.*;
 import java.nio.charset.StandardCharsets;
-
-import org.rwtodd.agires.*;
-import org.rwtodd.args.*;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -234,7 +235,7 @@ public class Cmd {
             };
             final AgiPic pic = resLoader.loadPic(number, observer);
             if(addViews) {
-                final var vm = new VMState(resLoader,pic, observer);
+                final var vm = new VMState(resLoader, pic, observer);
                 vm.loadAndRun(number);
             }
             var scaled = PngImage.scaleUp(PngImage.imageFromPic(resLoader, pic.picture()),scaleFactor,correctAR);
