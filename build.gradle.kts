@@ -11,7 +11,6 @@ subprojects {
   }
 
   tasks.withType<Test>().configureEach {
-        // useJUnitPlatform()
         testLogging {
                 events("skipped", "failed")
         }
