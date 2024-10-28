@@ -52,7 +52,7 @@ public class Cmd {
     }
 
     public static void main(String[] args) {
-        final var gameDir = new ExistingDirectoryParam(List.of("dir", "d"), Path.of("."), "<Directory>The game directory (defualt: current dir)");
+        final var gameDir = new ExistingDirectoryParam(List.of("dir", "d"), Path.of("."), "<Directory>The game directory (default: current dir)");
         final var doCSound = new IntListOrAll(List.of("csound"), "<Resource List>Write csound scores for SOUND resources");
         final var exampleOrcs = new FlagParam(List.of("orchestras"), "output example CSound orchestra files for use with csound output");
         final var doMidi = new IntListOrAll(List.of("midi"), "<Resource List>Write MIDI scores for SOUND resources");
@@ -73,7 +73,7 @@ public class Cmd {
             final var extras = parser.parse(args);
 
             if(help.getValue()) { usage(parser, null); }
-            else if(extras.size() > 0) { usage(parser, "Error: extra command-line argument!"); }
+            else if(!extras.isEmpty()) { usage(parser, "Error: extra command-line argument!"); }
 
             final var metadata = new OnDiskMetaData(gameDir.getValue());
             try (final var resLoader = new AgiResourceLoader(metadata)) {

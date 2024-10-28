@@ -4,6 +4,8 @@ plugins {
     `jvm-test-suite`
 }
 
+apply(from = rootProject.file("buildSrc/shared.gradle.kts"))
+
 base {
     archivesName = "org.rwtodd.agires"
 }
